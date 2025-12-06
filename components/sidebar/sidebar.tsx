@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, List, Plus, Folder, Settings, ChevronLeft, ChevronRight } from "lucide-react"
+import { Home, List, Plus, Folder, Settings, ChevronLeft, ChevronRight, Car, ReceiptText, PackageSearch, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -17,6 +17,10 @@ const menuItems = [
   { href: "/expenses/new", label: "Add Expense", icon: Plus },
   { href: "/categories", label: "Categories", icon: Folder },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/collection", label: "My Collection", icon: Car },
+  { href: "/purchases", label: "Purchases", icon: ReceiptText },
+  { href: "/preorders", label: "Preorders", icon: PackageSearch },
+  { href: "/dioramas", label: "Dioramas", icon: Building2 },
 ]
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
