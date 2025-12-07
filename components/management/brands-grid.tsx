@@ -11,8 +11,9 @@ ModuleRegistry.registerModules([AllEnterpriseModule, SetFilterModule])
 
 // Type definition for brand items
 export interface Brand {
-  id: string
+  id: number
   name: string
+  type: string
   isactive: number
 }
 
@@ -61,6 +62,9 @@ export const BrandsGrid = forwardRef<BrandsGridRef>((props, ref) => {
         filter: true,
         width: 80,
         type: "numericColumn",
+        valueFormatter: (params) => {
+          return params.value?.toString() || ""
+        },
       },
       {
         field: "name",
