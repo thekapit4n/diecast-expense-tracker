@@ -29,27 +29,47 @@ import { useRouter } from "next/navigation"
 const expenseFormSchema = z.object({
   itemName: z.string().min(1, "Item name is required"),
   category: z.string().min(1, "Category is required"),
-  amount: z.coerce.number().positive("Amount must be positive"),
-  currency: z.string().default("USD"),
+  amount: z.string().refine(
+    (val) => {
+      const num = parseFloat(val)
+      return !isNaN(num) && num > 0
+    },
+    { message: "Amount must be a positive number" }
+  ),
+  currency: z.string().min(1, "Currency is required"),
   purchaseDate: z.string().min(1, "Purchase date is required"),
   description: z.string().optional(),
 })
 
 type ExpenseFormValues = z.infer<typeof expenseFormSchema>
 
+type ExpenseFormData = {
+  itemName: string
+  category: string
+  amount: number
+  currency: string
+  purchaseDate: string
+  description?: string
+}
+
 export default function AddExpensePage() {
   const router = useRouter()
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
-      currency: "USD",
+      currency: "MYR",
       purchaseDate: new Date().toISOString().split("T")[0],
     },
   })
 
   const onSubmit = async (data: ExpenseFormValues) => {
+    // Convert amount from string to number
+    const formData: ExpenseFormData = {
+      ...data,
+      amount: parseFloat(data.amount),
+    }
     // TODO: Connect to Supabase
-    console.log("Form data:", data)
+    console.log("Form data:", formData)
     toast.success("Expense added successfully!")
     router.push("/expenses")
   }
@@ -157,6 +177,7 @@ export default function AddExpensePage() {
                           step="0.01"
                           placeholder="0.00"
                           {...field}
+                          value={field.value ?? ""}
                         />
                       </FormControl>
                       <FormDescription>
