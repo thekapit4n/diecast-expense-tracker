@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, List, Plus, Folder, Settings, ChevronLeft, ChevronRight, Car, ReceiptText, PackageSearch, Building2 } from "lucide-react"
+import { useState } from "react"
+import { Home, List, Plus, Folder, Settings, ChevronLeft, ChevronRight, Car, ReceiptText, PackageSearch, Building2, Settings2, ChevronDown, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -11,17 +12,109 @@ interface SidebarProps {
   onToggle: () => void
 }
 
-const menuItems = [
+interface MenuItem {
+  href?: string
+  label: string
+  icon: any
+  children?: MenuItem[]
+}
+
+const menuItems: MenuItem[] = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/expenses", label: "Expenses", icon: List },
   { href: "/expenses/new", label: "Add Expense", icon: Plus },
   { href: "/categories", label: "Categories", icon: Folder },
+  {
+    label: "Management",
+    icon: Settings2,
+    children: [
+      { href: "/management/brands", label: "Brand", icon: Tag },
+    ],
+  },
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/collection", label: "My Collection", icon: Car },
   { href: "/purchases", label: "Purchases", icon: ReceiptText },
   { href: "/preorders", label: "Preorders", icon: PackageSearch },
   { href: "/dioramas", label: "Dioramas", icon: Building2 },
 ]
+
+function MenuItemComponent({ item, pathname, isCollapsed }: { item: MenuItem; pathname: string; isCollapsed: boolean }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const Icon = item.icon
+
+  if (item.children) {
+    const hasActiveChild = item.children.some((child) => child.href === pathname)
+    const shouldBeOpen = hasActiveChild || isOpen
+
+    return (
+      <div>
+        <Button
+          variant={hasActiveChild ? "secondary" : "ghost"}
+          onClick={() => !isCollapsed && setIsOpen(!isOpen)}
+          className={cn(
+            "w-full justify-start gap-3",
+            isCollapsed && "justify-center px-0",
+            hasActiveChild && "bg-sidebar-accent text-sidebar-accent-foreground"
+          )}
+        >
+          <Icon className="h-5 w-5 shrink-0" />
+          {!isCollapsed && (
+            <>
+              <span className="flex-1 text-left">{item.label}</span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  shouldBeOpen && "rotate-180"
+                )}
+              />
+            </>
+          )}
+        </Button>
+        {!isCollapsed && shouldBeOpen && (
+          <div className="ml-4 mt-1 space-y-1">
+            {item.children.map((child) => {
+              const ChildIcon = child.icon
+              const isActive = pathname === child.href
+
+              return (
+                <Link key={child.href} href={child.href || "#"}>
+                  <Button
+                    variant={isActive ? "secondary" : "ghost"}
+                    className={cn(
+                      "w-full justify-start gap-3 text-sm",
+                      isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
+                    )}
+                  >
+                    <ChildIcon className="h-4 w-4 shrink-0" />
+                    <span>{child.label}</span>
+                  </Button>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const isActive = pathname === item.href
+
+  return (
+    <Link href={item.href || "#"}>
+      <Button
+        variant={isActive ? "secondary" : "ghost"}
+        className={cn(
+          "w-full justify-start gap-3",
+          isCollapsed && "justify-center px-0",
+          isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
+        )}
+      >
+        <Icon className="h-5 w-5 shrink-0" />
+        {!isCollapsed && <span>{item.label}</span>}
+      </Button>
+    </Link>
+  )
+}
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname()
@@ -56,27 +149,15 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
-        {menuItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname === item.href
-
-          return (
-            <Link key={item.href} href={item.href}>
-              <Button
-                variant={isActive ? "secondary" : "ghost"}
-                className={cn(
-                  "w-full justify-start gap-3",
-                  isCollapsed && "justify-center px-0",
-                  isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
-                )}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                {!isCollapsed && <span>{item.label}</span>}
-              </Button>
-            </Link>
-          )
-        })}
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        {menuItems.map((item) => (
+          <MenuItemComponent
+            key={item.href || item.label}
+            item={item}
+            pathname={pathname}
+            isCollapsed={isCollapsed}
+          />
+        ))}
       </nav>
     </aside>
   )

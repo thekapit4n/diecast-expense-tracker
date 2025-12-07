@@ -270,8 +270,10 @@ export function CollectionGrid() {
         paginationPageSize={10}
         paginationPageSizeSelector={[10, 20, 50, 100]}
         animateRows={true}
-        rowSelection="single"
-        suppressRowClickSelection={false}
+        rowSelection={{
+          mode: "singleRow",
+          enableClickSelection: true,
+        }}
         domLayout="normal"
       />
     </div>
