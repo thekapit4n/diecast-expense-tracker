@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Diecast Expense Tracker
+
+Admin portal for tracking diecast collection expenses.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ 
+- npm or yarn
+- Supabase account and project
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd diecast-expense-tracker
 ```
 
-Open [http://localhost:3000](http://localhost:4000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+Create a `.env.local` file with:
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+DATABASE_URL=your_database_connection_string
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Install Supabase CLI (if not already installed):
+```bash
+npm install -g supabase
+```
 
-## Learn More
+5. Link to your Supabase project:
+```bash
+supabase link --project-ref your-project-ref
+```
 
-To learn more about Next.js, take a look at the following resources:
+6. Run database migrations:
+```bash
+npm run db:migrate
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+This will create all necessary tables and seed initial data.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Development
 
-## Deploy on Vercel
+Run the development server:
+```bash
+npm run dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Open [http://localhost:4000](http://localhost:4000) in your browser.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Database Migrations
+
+See [supabase/README.md](./supabase/README.md) for detailed information about database migrations.
+
+### Quick Commands
+
+- `npm run db:migrate` - Apply all migrations
+- `npm run db:status` - Check migration status
+- `npm run db:new <name>` - Create a new migration
+- `npm run db:reset` - Reset database (WARNING: deletes all data)
+
+## Project Structure
+
+```
+├── app/                    # Next.js app directory
+│   ├── expenses/          # Expense management pages
+│   ├── collection/        # Collection pages
+│   ├── management/        # Management pages (brands, etc.)
+│   └── ...
+├── components/            # React components
+├── lib/                   # Utility functions
+├── supabase/             # Database migrations
+│   └── migrations/       # SQL migration files
+└── data/                 # Static data files
+```
+
+## Features
+
+- Expense tracking
+- Collection management
+- Brand management
+- Category management
+- Purchase tracking
+
+## Tech Stack
+
+- **Framework**: Next.js 16
+- **Database**: Supabase (PostgreSQL)
+- **UI**: React, Tailwind CSS, shadcn/ui
+- **Forms**: React Hook Form, Zod
+- **Tables**: AG Grid

@@ -1,10 +1,12 @@
 "use client"
 
-import { useMemo, useState, useCallback, useImperativeHandle, forwardRef } from "react"
+import { useMemo, useState, useCallback, useImperativeHandle, forwardRef, useEffect } from "react"
 import { AgGridReact } from "ag-grid-react"
 import { ColDef, ModuleRegistry, ICellRendererParams } from "ag-grid-community"
 import { AllEnterpriseModule, SetFilterModule } from "ag-grid-enterprise"
-import brandsData from "@/data/brands.json"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
 
 // Register AG Grid modules (Enterprise only)
 ModuleRegistry.registerModules([AllEnterpriseModule, SetFilterModule])
@@ -32,22 +34,52 @@ function StatusBadge({ value }: { value: number }) {
   )
 }
 
-// Brands data from JSON file
-const initialBrandsData: Brand[] = brandsData as Brand[]
-
 export interface BrandsGridRef {
   reload: () => void
 }
 
 export const BrandsGrid = forwardRef<BrandsGridRef>((props, ref) => {
   const [reloadKey, setReloadKey] = useState(0)
-  const [brandsDataState, setBrandsDataState] = useState<Brand[]>(initialBrandsData)
+  const [brandsDataState, setBrandsDataState] = useState<Brand[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const supabase = createClient()
+
+  const fetchBrands = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const { data, error: fetchError } = await supabase
+        .from('tbl_master_brand')
+        .select('*')
+        .order('id', { ascending: true })
+
+      if (fetchError) {
+        throw fetchError
+      }
+
+      if (data) {
+        setBrandsDataState(data as Brand[])
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch brands'
+      setError(errorMessage)
+      toast.error(`Error loading brands: ${errorMessage}`)
+      console.error('Error fetching brands:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [supabase])
 
   const reload = useCallback(() => {
-    // Force re-import of the JSON data
-    setBrandsDataState([...initialBrandsData])
+    fetchBrands()
     setReloadKey((prev) => prev + 1)
-  }, [])
+  }, [fetchBrands])
+
+  useEffect(() => {
+    fetchBrands()
+  }, [fetchBrands])
 
   useImperativeHandle(ref, () => ({
     reload,
@@ -111,6 +143,30 @@ export const BrandsGrid = forwardRef<BrandsGridRef>((props, ref) => {
     }),
     []
   )
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-gray-100 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading brands...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
+        <div className="text-center">
+          <p className="text-red-600 dark:text-red-400 mb-4">Error: {error}</p>
+          <Button onClick={reload} variant="default">
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="ag-theme-quartz w-full h-[calc(100vh-12rem)]" key={reloadKey}>

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { Home, List, Plus, Folder, Settings, ChevronLeft, ChevronRight, Car, ReceiptText, PackageSearch, Building2, Settings2, ChevronDown, Tag } from "lucide-react"
+import { Home, List, Plus, Folder, Settings, ChevronLeft, ChevronRight, Car, ReceiptText, PackageSearch, Building2, Settings2, ChevronDown, Tag, ShoppingCart, PlusCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -21,9 +21,16 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { href: "/", label: "Dashboard", icon: Home },
-  { href: "/expenses", label: "Expenses", icon: List },
-  { href: "/expenses/new", label: "Add Expense", icon: Plus },
-  { href: "/categories", label: "Categories", icon: Folder },
+  { href: "/collection", label: "My Collection", icon: Car },
+  
+  {
+    label: "Purchases",
+    icon: ShoppingCart,
+    children: [
+      { href: "/purchase/list", label: "List", icon: List },
+      { href: "/purchase/add", label: "New Purchase", icon: PlusCircle },
+    ],
+  },
   {
     label: "Management",
     icon: Settings2,
@@ -31,9 +38,13 @@ const menuItems: MenuItem[] = [
       { href: "/management/brands", label: "Brand", icon: Tag },
     ],
   },
+  { href: "/expenses", label: "Expenses", icon: List },
+  { href: "/expenses/new", label: "Add Expense", icon: Plus },
+  { href: "/categories", label: "Categories", icon: Folder },
+  
   { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/collection", label: "My Collection", icon: Car },
-  { href: "/purchases", label: "Purchases", icon: ReceiptText },
+ 
+  
   { href: "/preorders", label: "Preorders", icon: PackageSearch },
   { href: "/dioramas", label: "Dioramas", icon: Building2 },
 ]
