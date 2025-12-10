@@ -93,7 +93,7 @@ export default function AddPurchasePage() {
       collectionName: "",
       itemNo: "",
       brandId: "",
-      scale: "",
+      scale: "1:64",
       quantity: "1",
       pricePerUnit: "",
       purchaseType: "",
@@ -285,9 +285,24 @@ export default function AddPurchasePage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Scale</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., 1:64" {...field} />
-                        </FormControl>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="1:12">1:12</SelectItem>
+                            <SelectItem value="1:18">1:18</SelectItem>
+                            <SelectItem value="1:24">1:24</SelectItem>
+                            <SelectItem value="1:32">1:32</SelectItem>
+                            <SelectItem value="1:43">1:43</SelectItem>
+                            <SelectItem value="1:64">1:64</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
