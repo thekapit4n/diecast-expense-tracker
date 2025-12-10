@@ -9,10 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 
 export default function SettingsPage() {
   return (
     <div className="space-y-6">
+      <PageBreadcrumb />
+      
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">

@@ -38,8 +38,6 @@ const menuItems: MenuItem[] = [
       { href: "/management/brands", label: "Brand", icon: Tag },
     ],
   },
-  { href: "/expenses", label: "Expenses", icon: List },
-  { href: "/expenses/new", label: "Add Expense", icon: Plus },
   { href: "/categories", label: "Categories", icon: Folder },
   
   { href: "/settings", label: "Settings", icon: Settings },
