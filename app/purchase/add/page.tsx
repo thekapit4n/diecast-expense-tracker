@@ -447,7 +447,7 @@ export default function AddPurchasePage() {
                                 )}
                               >
                                 {field.value ? (
-                                  format(field.value, "PPP")
+                                  format(field.value, "dd-MM-yyyy")
                                 ) : (
                                   <span>Pick a date</span>
                                 )}
@@ -522,7 +522,7 @@ export default function AddPurchasePage() {
                                 )}
                               >
                                 {field.value ? (
-                                  format(field.value, "PPP")
+                                  format(field.value, "dd-MM-yyyy")
                                 ) : (
                                   <span>Pick a date</span>
                                 )}
@@ -562,7 +562,7 @@ export default function AddPurchasePage() {
                               )}
                             >
                               {field.value ? (
-                                format(field.value, "PPP")
+                                format(field.value, "dd-MM-yyyy")
                               ) : (
                                 <span>Pick a date</span>
                               )}
