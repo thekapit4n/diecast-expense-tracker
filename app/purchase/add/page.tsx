@@ -807,8 +807,11 @@ export default function AddPurchasePage() {
                                     mode="single"
                                     selected={field.value}
                                     onSelect={field.onChange}
+                                    captionLayout="dropdown"
+                                    fromYear={2024}
+                                    toYear={new Date().getFullYear()}
                                     disabled={(date) =>
-                                      date > new Date() || date < new Date("1900-01-01")
+                                      date > new Date() || date < new Date("2024-01-01")
                                     }
                                     initialFocus
                                   />
@@ -891,6 +894,9 @@ export default function AddPurchasePage() {
                                       mode="single"
                                       selected={field.value}
                                       onSelect={field.onChange}
+                                      captionLayout="dropdown"
+                                      fromYear={2024}
+                                      toYear={new Date().getFullYear() + 5}
                                       initialFocus
                                     />
                                   </PopoverContent>
@@ -931,6 +937,9 @@ export default function AddPurchasePage() {
                                     mode="single"
                                     selected={field.value}
                                     onSelect={field.onChange}
+                                    captionLayout="dropdown"
+                                    fromYear={2024}
+                                    toYear={new Date().getFullYear() + 10}
                                     initialFocus
                                   />
                                 </PopoverContent>
