@@ -2,15 +2,21 @@
 
 import { useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { RefreshCw } from "lucide-react"
-import { BrandsGrid, BrandsGridRef } from "@/components/management/brands-grid"
+import { RefreshCw, Plus } from "lucide-react"
+import { PurchaseGrid, PurchaseGridRef } from "@/components/purchase/purchase-grid"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
+import { useRouter } from "next/navigation"
 
-export default function BrandsPage() {
-  const brandsGridRef = useRef<BrandsGridRef>(null)
+export default function PurchaseListPage() {
+  const purchaseGridRef = useRef<PurchaseGridRef>(null)
+  const router = useRouter()
 
   const handleReload = () => {
-    brandsGridRef.current?.reload()
+    purchaseGridRef.current?.reload()
+  }
+
+  const handleAddPurchase = () => {
+    router.push("/purchase/add")
   }
 
   return (
@@ -19,17 +25,23 @@ export default function BrandsPage() {
       
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Brand Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Purchase List</h1>
           <p className="text-muted-foreground">
-            View and manage all diecast brands
+            View and manage all diecast purchases
           </p>
         </div>
-        <Button onClick={handleReload} variant="outline" size="icon" aria-label="Reload brands">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleAddPurchase} variant="default">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Purchase
+          </Button>
+          <Button onClick={handleReload} variant="outline" size="icon" aria-label="Reload purchases">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      <BrandsGrid ref={brandsGridRef} />
+      <PurchaseGrid ref={purchaseGridRef} />
     </div>
   )
 }
