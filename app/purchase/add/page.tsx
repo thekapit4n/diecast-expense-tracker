@@ -37,6 +37,7 @@ import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { BrandCombobox } from "@/components/ui/brand-combobox"
+import { useUserTracking } from "@/lib/auth/use-user-tracking"
 
 const purchaseFormSchema = z.object({
   collectionName: z.string().min(1, "Collection name is required"),
@@ -70,6 +71,9 @@ const purchaseFormSchema = z.object({
   packagingType: z.string().optional(),
   sizeDetail: z.string().optional(),
   hasAcrylic: z.string().optional(),
+  shopName: z.string().optional(),
+  address: z.string().optional(),
+  country: z.string().optional(),
   remark: z.string().optional(),
 })
 
@@ -86,6 +90,8 @@ export default function AddPurchasePage() {
   const supabase = createClient()
   const [brands, setBrands] = useState<Brand[]>([])
   const [totalPrice, setTotalPrice] = useState<number>(0)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { getCreateFields } = useUserTracking()
 
   const form = useForm<PurchaseFormValues>({
     resolver: zodResolver(purchaseFormSchema),
@@ -106,6 +112,9 @@ export default function AddPurchasePage() {
       packagingType: "",
       sizeDetail: "",
       hasAcrylic: "0",
+      shopName: "",
+      address: "",
+      country: "",
       remark: "",
     },
   })
@@ -142,6 +151,7 @@ export default function AddPurchasePage() {
   }, [quantity, pricePerUnit])
 
   const onSubmit = async (data: PurchaseFormValues) => {
+    setIsSubmitting(true)
     try {
       // First, create the collection
       const { data: collectionData, error: collectionError } = await supabase
@@ -152,6 +162,7 @@ export default function AddPurchasePage() {
           brand_id: parseInt(data.brandId),
           scale: data.scale || null,
           remark: data.remark || null,
+          ...getCreateFields(),
         })
         .select()
         .single()
@@ -163,7 +174,7 @@ export default function AddPurchasePage() {
       }
 
       // Then, create the purchase
-      const { error: purchaseError } = await supabase
+      const { data: purchaseData, error: purchaseError } = await supabase
         .from("tbl_purchase")
         .insert({
           collection_id: collectionData.id,
@@ -183,8 +194,14 @@ export default function AddPurchasePage() {
           packaging_type: data.packagingType || null,
           size_detail: data.sizeDetail || null,
           has_acrylic: data.hasAcrylic === "1",
+          shop_name: data.shopName || null,
+          address: data.address || null,
+          country: data.country || null,
           remark: data.remark || null,
+          ...getCreateFields(),
         })
+        .select()
+        .single()
 
       if (purchaseError) {
         console.error("Purchase error:", purchaseError)
@@ -192,11 +209,40 @@ export default function AddPurchasePage() {
         return
       }
 
+      // If payment status is paid, create collection detail entry
+      if (data.paymentStatus === "paid") {
+        const { error: detailError } = await supabase
+          .from("tbl_collection_detail")
+          .insert({
+            collection_id: collectionData.id,
+            purchase_id: purchaseData.id,
+            quantity: parseInt(data.quantity),
+            brand_id: parseInt(data.brandId),
+            is_chase: data.isChase === "1",
+            edition_type: data.editionType || null,
+            packaging_type: data.packagingType || null,
+            size_detail: data.sizeDetail || null,
+            has_acrylic: data.hasAcrylic === "1",
+            is_case: false,
+            remark: data.remark || null,
+            ...getCreateFields(),
+          })
+
+        if (detailError) {
+          console.error("Collection detail error:", detailError)
+          toast.warning("Purchase created but failed to add to collection detail")
+          router.push("/purchase/list")
+          return
+        }
+      }
+
       toast.success("Purchase added successfully!")
       router.push("/purchase/list")
     } catch (error) {
       console.error("Error:", error)
       toast.error("An error occurred while saving the purchase")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -733,6 +779,88 @@ export default function AddPurchasePage() {
                 />
               </div>
 
+              {/* Shop Information */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="text-lg font-semibold">Shop Information (Optional)</h3>
+
+                <FormField
+                  control={form.control}
+                  name="shopName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Shop Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., Toy Store Malaysia"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Name of the shop where you purchased this item
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Shop address"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="country"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Country</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select country" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Malaysia">Malaysia</SelectItem>
+                            <SelectItem value="Singapore">Singapore</SelectItem>
+                            <SelectItem value="Thailand">Thailand</SelectItem>
+                            <SelectItem value="Indonesia">Indonesia</SelectItem>
+                            <SelectItem value="Philippines">Philippines</SelectItem>
+                            <SelectItem value="Vietnam">Vietnam</SelectItem>
+                            <SelectItem value="Japan">Japan</SelectItem>
+                            <SelectItem value="South Korea">South Korea</SelectItem>
+                            <SelectItem value="China">China</SelectItem>
+                            <SelectItem value="Hong Kong">Hong Kong</SelectItem>
+                            <SelectItem value="Taiwan">Taiwan</SelectItem>
+                            <SelectItem value="United States">United States</SelectItem>
+                            <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                            <SelectItem value="Australia">Australia</SelectItem>
+                            <SelectItem value="Canada">Canada</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
               {/* Additional Information */}
               <div className="space-y-4 border-t pt-4">
                 <h3 className="text-lg font-semibold">Additional Information</h3>
@@ -777,11 +905,14 @@ export default function AddPurchasePage() {
               </div>
 
               <div className="flex gap-4">
-                <Button type="submit">Add Purchase</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Adding Purchase..." : "Add Purchase"}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => router.back()}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>

@@ -5,6 +5,7 @@ import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AdminLayout } from "@/components/layout/admin-layout";
+import { AuthProvider } from "@/lib/auth/auth-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,10 +32,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AdminLayout>
-          {children}
-        </AdminLayout>
-        <Toaster />
+        <AuthProvider>
+          <AdminLayout>
+            {children}
+          </AdminLayout>
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
