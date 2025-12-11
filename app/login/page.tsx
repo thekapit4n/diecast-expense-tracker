@@ -25,7 +25,7 @@ import { Mail, Lock, Eye, EyeOff } from "lucide-react"
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  rememberMe: z.boolean().default(false),
+  rememberMe: z.boolean(),
 })
 
 const signupSchema = z.object({
@@ -71,10 +71,6 @@ export default function LoginPage() {
       const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
-        options: {
-          // Session TTL: 1 day (86400s) default, 7 days (604800s) with Remember Me
-          expiresIn: data.rememberMe ? 604800 : 86400,
-        }
       })
 
       if (error) {
