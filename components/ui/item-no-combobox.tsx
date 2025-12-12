@@ -82,7 +82,7 @@ export function ItemNoCombobox({
                   {inputValue.length < 2 ? (
                     <p className="text-muted-foreground">Type at least 2 characters to search...</p>
                   ) : (
-                    <p className="text-muted-foreground">No collections found with this item number</p>
+                    <p className="text-muted-foreground">No collections found</p>
                   )}
                 </div>
               </CommandEmpty>
