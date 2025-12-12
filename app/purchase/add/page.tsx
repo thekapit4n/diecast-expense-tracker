@@ -596,6 +596,9 @@ export default function AddPurchasePage() {
                               placeholder="Select brand..."
                             />
                           </FormControl>
+                          <FormDescription>
+                            &nbsp;
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -630,6 +633,9 @@ export default function AddPurchasePage() {
                               </SelectContent>
                             </Select>
                             <FormMessage />
+                            <FormDescription>
+                            &nbsp;
+                          </FormDescription>
                           </FormItem>
                         )}
                       />
