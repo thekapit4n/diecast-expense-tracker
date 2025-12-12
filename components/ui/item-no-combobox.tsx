@@ -27,7 +27,7 @@ export interface CollectionOption {
   scale: string | null
 }
 
-interface CollectionComboboxProps {
+interface ItemNoComboboxProps {
   collections: CollectionOption[]
   value: string | null
   onValueChange: (collection: CollectionOption | null) => void
@@ -36,14 +36,14 @@ interface CollectionComboboxProps {
   onInputChange: (value: string) => void
 }
 
-export function CollectionCombobox({
+export function ItemNoCombobox({
   collections,
   value,
   onValueChange,
-  placeholder = "Search or type new collection name...",
+  placeholder = "Search by item number...",
   inputValue,
   onInputChange,
-}: CollectionComboboxProps) {
+}: ItemNoComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
   const selectedCollection = collections.find(
@@ -62,21 +62,7 @@ export function CollectionCombobox({
             selectedCollection && "border-primary bg-primary/5"
           )}
         >
-          {selectedCollection ? (
-            <span className="truncate flex items-center gap-2">
-              <span className="text-primary">✓</span>
-              {selectedCollection.name}
-              {selectedCollection.item_no && (
-                <span className="text-muted-foreground"> ({selectedCollection.item_no})</span>
-              )}
-            </span>
-          ) : inputValue ? (
-            <span className="truncate flex items-center gap-2">
-              <span className="text-orange-500">+</span>
-              {inputValue}
-              <span className="text-xs text-muted-foreground">(new)</span>
-            </span>
-          ) : (
+          {inputValue || (
             <span className="text-muted-foreground">{placeholder}</span>
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -85,7 +71,7 @@ export function CollectionCombobox({
       <PopoverContent className="w-full p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput 
-            placeholder="Search collection name..." 
+            placeholder="Type item number..." 
             value={inputValue}
             onValueChange={onInputChange}
           />
@@ -96,27 +82,19 @@ export function CollectionCombobox({
                   {inputValue.length < 2 ? (
                     <p className="text-muted-foreground">Type at least 2 characters to search...</p>
                   ) : (
-                    <div className="space-y-2">
-                      <p className="text-muted-foreground">No existing collection found</p>
-                      <div className="mx-auto max-w-xs rounded-md bg-primary/10 px-3 py-2 text-xs">
-                        <p className="font-medium text-primary">
-                          Close this to add as new collection:
-                        </p>
-                        <p className="mt-1 font-semibold text-foreground">"{inputValue}"</p>
-                      </div>
-                    </div>
+                    <p className="text-muted-foreground">No collections found with this item number</p>
                   )}
                 </div>
               </CommandEmpty>
             ) : (
-              <CommandGroup heading="Existing Collections (Select to reuse)">
+              <CommandGroup heading="Matching Collections">
                 {collections.map((collection) => (
                   <CommandItem
                     key={collection.id}
                     value={collection.id}
                     onSelect={() => {
                       onValueChange(collection)
-                      onInputChange(collection.name)
+                      onInputChange(collection.item_no || "")
                       setOpen(false)
                     }}
                   >
@@ -130,12 +108,10 @@ export function CollectionCombobox({
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                          {collection.item_no}
+                        </span>
                         <span className="font-medium">{collection.name}</span>
-                        {collection.item_no && (
-                          <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
-                            {collection.item_no}
-                          </span>
-                        )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         {collection.brand_name}
@@ -152,4 +128,3 @@ export function CollectionCombobox({
     </Popover>
   )
 }
-

@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { BrandCombobox } from "@/components/ui/brand-combobox"
 import { CollectionCombobox, type CollectionOption } from "@/components/ui/collection-combobox"
+import { ItemNoCombobox } from "@/components/ui/item-no-combobox"
 import { useUserTracking } from "@/lib/auth/use-user-tracking"
 
 const purchaseDetailSchema = z.object({
@@ -98,6 +99,8 @@ export default function AddPurchasePage() {
   const [brands, setBrands] = useState<Brand[]>([])
   const [collections, setCollections] = useState<CollectionOption[]>([])
   const [collectionSearchInput, setCollectionSearchInput] = useState("")
+  const [itemNoSearchResults, setItemNoSearchResults] = useState<CollectionOption[]>([])
+  const [itemNoSearchInput, setItemNoSearchInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [collapsedSections, setCollapsedSections] = useState<Record<number, { preorder: boolean, additional: boolean }>>({})
   const [isCollectionSelected, setIsCollectionSelected] = useState(false)
@@ -160,7 +163,7 @@ export default function AddPurchasePage() {
     fetchBrands()
   }, [])
 
-  // Fetch collections based on search input
+  // Fetch collections based on search input (name only)
   useEffect(() => {
     const fetchCollections = async () => {
       if (!collectionSearchInput || collectionSearchInput.length < 2) {
@@ -202,6 +205,66 @@ export default function AddPurchasePage() {
 
     return () => clearTimeout(timeoutId)
   }, [collectionSearchInput, supabase])
+
+  // Fetch collections based on item number search
+  useEffect(() => {
+    const fetchByItemNo = async () => {
+      if (!itemNoSearchInput || itemNoSearchInput.length < 2) {
+        setItemNoSearchResults([])
+        return
+      }
+
+      const { data, error } = await supabase
+        .from("tbl_collection")
+        .select(`
+          id,
+          name,
+          item_no,
+          brand_id,
+          scale,
+          tbl_master_brand!inner(name)
+        `)
+        .ilike("item_no", `%${itemNoSearchInput}%`)
+        .limit(10)
+
+      if (error) {
+        console.error("Error fetching by item no:", error)
+      } else {
+        const formattedCollections: CollectionOption[] = (data || []).map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          item_no: item.item_no,
+          brand_id: item.brand_id,
+          brand_name: item.tbl_master_brand.name,
+          scale: item.scale,
+        }))
+        setItemNoSearchResults(formattedCollections)
+      }
+    }
+
+    const timeoutId = setTimeout(() => {
+      fetchByItemNo()
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [itemNoSearchInput, supabase])
+
+  // Handle item number selection
+  const handleItemNoSelect = (collection: CollectionOption | null) => {
+    if (collection) {
+      setIsCollectionSelected(true)
+      form.setValue("collectionId", collection.id)
+      form.setValue("collectionName", collection.name)
+      form.setValue("itemNo", collection.item_no || "")
+      form.setValue("brandId", collection.brand_id.toString())
+      form.setValue("scale", collection.scale || "1:64")
+      
+      // Also update the collection search input to show the selected name
+      setCollectionSearchInput(collection.name)
+      
+      console.log("Selected collection from item no:", collection.id, collection.name)
+    }
+  }
 
   // Watch brandId to get brand type for conditional rendering
   const selectedBrandId = form.watch("brandId")
@@ -486,15 +549,31 @@ export default function AddPurchasePage() {
                         <FormItem>
                           <FormLabel>Item Number</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="e.g., #123" 
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e)
-                                handleCollectionFieldChange('itemNo', e.target.value)
+                            <ItemNoCombobox
+                              collections={itemNoSearchResults}
+                              value={form.watch("collectionId")}
+                              onValueChange={handleItemNoSelect}
+                              inputValue={itemNoSearchInput}
+                              onInputChange={(value) => {
+                                setItemNoSearchInput(value)
+                                form.setValue("itemNo", value)
+                                
+                                // If a collection was selected and user starts typing different text, clear the selection
+                                if (isCollectionSelected) {
+                                  const currentCollectionId = form.getValues("collectionId")
+                                  const selectedCollection = itemNoSearchResults.find(c => c.id === currentCollectionId)
+                                  if (selectedCollection && value !== (selectedCollection.item_no || "")) {
+                                    setIsCollectionSelected(false)
+                                    form.setValue("collectionId", null)
+                                    console.log("User typing different item no, clearing collection ID")
+                                  }
+                                }
                               }}
                             />
                           </FormControl>
+                          <FormDescription>
+                            Search by item number to reuse collection
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
