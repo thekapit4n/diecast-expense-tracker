@@ -2,11 +2,12 @@
 
 import { useEffect, useState, forwardRef, useImperativeHandle, useMemo, useCallback } from "react"
 import { AgGridReact } from "ag-grid-react"
-import { ColDef, ModuleRegistry, ICellRendererParams } from "ag-grid-community"
+import { ColDef, ModuleRegistry, ICellRendererParams, GetContextMenuItemsParams, MenuItemDef } from "ag-grid-community"
 import { AllEnterpriseModule, SetFilterModule } from "ag-grid-enterprise"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { EditPurchaseModal } from "./edit-purchase-modal"
 
 // Register AG Grid modules (Enterprise only)
 ModuleRegistry.registerModules([AllEnterpriseModule, SetFilterModule])
@@ -27,6 +28,38 @@ function PaymentStatusBadge({ value }: { value: string | null }) {
   return (
     <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
       {value.charAt(0).toUpperCase() + value.slice(1)}
+    </span>
+  )
+}
+
+// Edition Type Badge Component
+function EditionTypeBadge({ value }: { value: string | null }) {
+  if (!value) return null
+  
+  const editionType = value.toLowerCase().replace(/_/g, ' ')
+  
+  // Capitalize each word
+  const displayText = editionType
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+  
+  // If normal, just return plain text without badge
+  if (editionType === 'normal') {
+    return <span className="text-sm text-gray-600 dark:text-gray-400">{displayText}</span>
+  }
+  
+  const colors: Record<string, string> = {
+    'event car': "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200",
+    'ltd': "bg-blue-900 text-blue-100 dark:bg-blue-950 dark:text-blue-200",
+    'black edition': "bg-gray-900 text-white dark:bg-black dark:text-gray-100",
+  }
+  
+  const colorClass = colors[editionType] || "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+  
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
+      {displayText}
     </span>
   )
 }
@@ -69,6 +102,8 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
   const [purchases, setPurchases] = useState<PurchaseItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null)
   const supabase = createClient()
 
   const fetchPurchases = useCallback(async () => {
@@ -108,7 +143,6 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
             tbl_master_brand(name)
           )
         `)
-        .order("payment_date", { ascending: false, nullsFirst: false })
 
       if (error) {
         throw error
@@ -144,7 +178,12 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         remark: item.remark,
       }))
 
-      setPurchases(formattedData)
+      // Sort by collection name ascending
+      const sortedData = formattedData.sort((a, b) => 
+        a.collection_name.localeCompare(b.collection_name)
+      )
+
+      setPurchases(sortedData)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch purchases'
       setError(errorMessage)
@@ -171,83 +210,132 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
     {
       headerName: "Collection Name",
       field: "collection_name",
-      filter: true,
+      filter: 'agTextColumnFilter',
       flex: 2,
       minWidth: 200,
+      sort: 'asc',
+      filterParams: {
+        filterOptions: ['contains', 'notContains', 'equals', 'notEqual', 'startsWith', 'endsWith'],
+        defaultOption: 'contains',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "item_no",
       headerName: "Item No",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 120,
+      filterParams: {
+        filterOptions: ['contains', 'equals', 'startsWith'],
+        defaultOption: 'contains',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "brand_name",
       headerName: "Brand",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       flex: 1,
       minWidth: 150,
+      filterParams: {
+        filterOptions: ['contains', 'equals', 'startsWith'],
+        defaultOption: 'contains',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "quantity",
       headerName: "Quantity",
       sortable: true,
-      filter: true,
+      filter: 'agNumberColumnFilter',
       width: 100,
       type: "numericColumn",
+      filterParams: {
+        filterOptions: ['equals', 'notEqual', 'lessThan', 'lessThanOrEqual', 'greaterThan', 'greaterThanOrEqual', 'inRange'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "price_per_unit",
       headerName: "Price/Unit (RM)",
       sortable: true,
-      filter: true,
+      filter: 'agNumberColumnFilter',
       width: 140,
       type: "numericColumn",
       valueFormatter: (params) => {
         return params.value != null ? `RM ${params.value.toFixed(2)}` : ""
+      },
+      filterParams: {
+        filterOptions: ['equals', 'lessThan', 'greaterThan', 'inRange'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
       },
     },
     {
       field: "total_price",
       headerName: "Total Price (RM)",
       sortable: true,
-      filter: true,
+      filter: 'agNumberColumnFilter',
       width: 150,
       type: "numericColumn",
       valueFormatter: (params) => {
         return params.value != null ? `RM ${params.value.toFixed(2)}` : ""
+      },
+      filterParams: {
+        filterOptions: ['equals', 'lessThan', 'greaterThan', 'inRange'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
       },
     },
     {
       field: "purchase_type",
       headerName: "Purchase Type",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 130,
       cellRenderer: (params: any) => {
         if (!params.value) return ""
         return params.value.charAt(0).toUpperCase() + params.value.slice(1)
+      },
+      filterParams: {
+        filterOptions: ['contains', 'equals'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
       },
     },
     {
       field: "platform",
       headerName: "Platform",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 130,
       hide: true,
       cellRenderer: (params: any) => {
         if (!params.value) return ""
         return params.value.charAt(0).toUpperCase() + params.value.slice(1)
       },
+      filterParams: {
+        filterOptions: ['contains', 'equals'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "payment_status",
       headerName: "Payment Status",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 140,
       cellRenderer: (params: ICellRendererParams<PurchaseItem>) => {
         if (!params.data) return null
@@ -256,151 +344,284 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
       valueGetter: (params) => {
         return params.data?.payment_status || ""
       },
+      filterParams: {
+        filterOptions: ['equals', 'notEqual'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "payment_method",
       headerName: "Payment Method",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 140,
       hide: true,
+      filterParams: {
+        filterOptions: ['equals', 'contains'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "payment_date",
       headerName: "Payment Date",
       sortable: true,
-      filter: true,
+      filter: 'agDateColumnFilter',
       width: 140,
       valueFormatter: (params) => {
         if (!params.value) return ""
         return new Date(params.value).toLocaleDateString("en-GB")
+      },
+      filterParams: {
+        filterOptions: ['equals', 'lessThan', 'greaterThan', 'inRange'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+        comparator: (filterDate: Date, cellValue: string) => {
+          if (!cellValue) return -1
+          const cellDate = new Date(cellValue)
+          cellDate.setHours(0, 0, 0, 0)
+          filterDate.setHours(0, 0, 0, 0)
+          if (cellDate < filterDate) return -1
+          if (cellDate > filterDate) return 1
+          return 0
+        },
       },
     },
     {
       field: "scale",
       headerName: "Scale",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 100,
       hide: true,
+      filterParams: {
+        filterOptions: ['equals', 'contains'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "pre_order_status",
       headerName: "Pre-Order Status",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 140,
       hide: true,
+      filterParams: {
+        filterOptions: ['equals', 'contains'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "pre_order_date",
       headerName: "Pre-Order Date",
       sortable: true,
-      filter: true,
+      filter: 'agDateColumnFilter',
       width: 140,
       hide: true,
       valueFormatter: (params) => {
         if (!params.value) return ""
         return new Date(params.value).toLocaleDateString("en-GB")
+      },
+      filterParams: {
+        filterOptions: ['equals', 'lessThan', 'greaterThan', 'inRange'],
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+        comparator: (filterDate: Date, cellValue: string) => {
+          if (!cellValue) return -1
+          const cellDate = new Date(cellValue)
+          cellDate.setHours(0, 0, 0, 0)
+          filterDate.setHours(0, 0, 0, 0)
+          if (cellDate < filterDate) return -1
+          if (cellDate > filterDate) return 1
+          return 0
+        },
       },
     },
     {
       field: "arrival_date",
       headerName: "Arrival Date",
       sortable: true,
-      filter: true,
+      filter: 'agDateColumnFilter',
       width: 140,
       hide: true,
       valueFormatter: (params) => {
         if (!params.value) return ""
         return new Date(params.value).toLocaleDateString("en-GB")
       },
+      filterParams: {
+        filterOptions: ['equals', 'lessThan', 'greaterThan', 'inRange'],
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+        comparator: (filterDate: Date, cellValue: string) => {
+          if (!cellValue) return -1
+          const cellDate = new Date(cellValue)
+          cellDate.setHours(0, 0, 0, 0)
+          filterDate.setHours(0, 0, 0, 0)
+          if (cellDate < filterDate) return -1
+          if (cellDate > filterDate) return 1
+          return 0
+        },
+      },
     },
     {
       field: "is_chase",
       headerName: "Is Chase?",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 110,
       hide: true,
       valueFormatter: (params) => (params.value ? "Yes" : "No"),
+      filterParams: {
+        filterOptions: ['equals'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "edition_type",
       headerName: "Edition Type",
       sortable: true,
-      filter: true,
+      filter: 'agSetColumnFilter',
       width: 140,
-      hide: true,
+      cellRenderer: (params: ICellRendererParams<PurchaseItem>) => {
+        if (!params.data) return null
+        return <EditionTypeBadge value={params.data.edition_type} />
+      },
+      valueGetter: (params) => {
+        if (!params.data?.edition_type) return ""
+        return params.data.edition_type.replace(/_/g, ' ')
+      },
+      filterParams: {
+        values: ['normal', 'event car', 'ltd', 'black edition'],
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "packaging_type",
       headerName: "Packaging Type",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 150,
       hide: true,
+      filterParams: {
+        filterOptions: ['equals', 'contains'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "size_detail",
       headerName: "Size Detail",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 150,
       hide: true,
+      filterParams: {
+        filterOptions: ['contains', 'equals'],
+        defaultOption: 'contains',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "has_acrylic",
       headerName: "Has Acrylic?",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 120,
       hide: true,
       valueFormatter: (params) => (params.value ? "Yes" : "No"),
+      filterParams: {
+        filterOptions: ['equals'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "shop_name",
       headerName: "Shop Name",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 150,
       hide: true,
+      filterParams: {
+        filterOptions: ['contains', 'equals', 'startsWith'],
+        defaultOption: 'contains',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "address",
       headerName: "Address",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 200,
       hide: true,
+      filterParams: {
+        filterOptions: ['contains', 'equals'],
+        defaultOption: 'contains',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "country",
       headerName: "Country",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 130,
       hide: true,
+      filterParams: {
+        filterOptions: ['equals', 'contains'],
+        defaultOption: 'equals',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "url_link",
       headerName: "URL Link",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 200,
       hide: true,
       cellRenderer: (params: any) => {
         if (!params.value) return ""
         return `<a href="${params.value}" target="_blank" class="text-blue-600 hover:underline">${params.value}</a>`
       },
+      filterParams: {
+        filterOptions: ['contains', 'equals'],
+        defaultOption: 'contains',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
     {
       field: "remark",
       headerName: "Remark",
       sortable: true,
-      filter: true,
+      filter: 'agTextColumnFilter',
       width: 200,
       hide: true,
+      filterParams: {
+        filterOptions: ['contains', 'equals'],
+        defaultOption: 'contains',
+        buttons: ['reset', 'apply'],
+        closeOnApply: true,
+      },
     },
   ], [])
 
@@ -412,6 +633,39 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
     }),
     []
   )
+
+  const getContextMenuItems = useCallback(
+    (params: GetContextMenuItemsParams<PurchaseItem>) => {
+      const result: any[] = [
+        "copy",
+        "copyWithHeaders",
+        "separator",
+        "export",
+      ]
+
+      // Add "Edit" option only when right-clicking on collection_name column
+      if (params.column && params.column.getColId() === "collection_name") {
+        result.unshift({
+          name: "Edit Purchase",
+          icon: '<span class="ag-icon ag-icon-edit"></span>',
+          action: () => {
+            if (params.node && params.node.data) {
+              setSelectedPurchaseId(params.node.data.id)
+              setEditModalOpen(true)
+            }
+          },
+        })
+        result.unshift("separator")
+      }
+
+      return result
+    },
+    []
+  )
+
+  const handleEditSuccess = useCallback(() => {
+    reload()
+  }, [reload])
 
   if (loading) {
     return (
@@ -438,25 +692,38 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
   }
 
   return (
-    <div className="ag-theme-quartz w-full h-[calc(100vh-12rem)]">
-      {loading ? null : (
-        <AgGridReact<PurchaseItem>
-          theme="legacy"
-          rowData={purchases}
-          columnDefs={columnDefs}
-          defaultColDef={defaultColDef}
-          pagination={true}
-          paginationPageSize={100}
-          paginationPageSizeSelector={[10, 20, 50, 100]}
-          animateRows={true}
-          rowSelection={{
-            mode: "singleRow",
-            enableClickSelection: true,
-          }}
-          domLayout="normal"
+    <>
+      <div className="ag-theme-quartz w-full h-[calc(100vh-12rem)]">
+        {loading ? null : (
+          <AgGridReact<PurchaseItem>
+            theme="legacy"
+            rowData={purchases}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            pagination={true}
+            paginationPageSize={100}
+            paginationPageSizeSelector={[10, 20, 50, 100]}
+            animateRows={true}
+            rowSelection={{
+              mode: "singleRow",
+              enableClickSelection: true,
+            }}
+            domLayout="normal"
+            getContextMenuItems={getContextMenuItems as any}
+          />
+        )}
+      </div>
+
+      {/* Edit Purchase Modal */}
+      {selectedPurchaseId && (
+        <EditPurchaseModal
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          purchaseId={selectedPurchaseId}
+          onSuccess={handleEditSuccess}
         />
       )}
-    </div>
+    </>
   )
 })
 
