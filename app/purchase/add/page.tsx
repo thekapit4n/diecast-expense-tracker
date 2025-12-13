@@ -348,6 +348,21 @@ export default function AddPurchasePage() {
     toast.success("Purchase detail duplicated")
   }
 
+  /**
+   * Helper function to format date to YYYY-MM-DD string
+   * This ensures dates are stored correctly without timezone conversion issues
+   */
+  const formatDateForDatabase = (date: Date | undefined | null): string | null => {
+    if (!date) return null
+    
+    // Format the date as YYYY-MM-DD using local timezone
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    
+    return `${year}-${month}-${day}`
+  }
+
   const onSubmit = async (data: PurchaseFormValues) => {
     setIsSubmitting(true)
     try {
@@ -395,11 +410,11 @@ export default function AddPurchasePage() {
             purchase_type: detail.purchaseType || null,
             platform: detail.platform || null,
             pre_order_status: detail.preOrderStatus || null,
-            pre_order_date: detail.preOrderDate || null,
+            pre_order_date: formatDateForDatabase(detail.preOrderDate),
             payment_status: detail.paymentStatus || null,
             payment_method: detail.paymentMethod || null,
-            payment_date: detail.paymentDate || null,
-            arrival_date: detail.arrivalDate || null,
+            payment_date: formatDateForDatabase(detail.paymentDate),
+            arrival_date: formatDateForDatabase(detail.arrivalDate),
             url_link: detail.urlLink || null,
             is_chase: detail.isChase === "1",
             edition_type: detail.editionType || null,
@@ -892,6 +907,7 @@ export default function AddPurchasePage() {
                                     mode="single"
                                     selected={field.value}
                                     onSelect={field.onChange}
+                                    defaultMonth={field.value}
                                     captionLayout="dropdown"
                                     fromYear={2024}
                                     toYear={new Date().getFullYear()}
@@ -979,6 +995,7 @@ export default function AddPurchasePage() {
                                       mode="single"
                                       selected={field.value}
                                       onSelect={field.onChange}
+                                      defaultMonth={field.value}
                                       captionLayout="dropdown"
                                       fromYear={2024}
                                       toYear={new Date().getFullYear() + 5}
@@ -1022,6 +1039,7 @@ export default function AddPurchasePage() {
                                     mode="single"
                                     selected={field.value}
                                     onSelect={field.onChange}
+                                    defaultMonth={field.value}
                                     captionLayout="dropdown"
                                     fromYear={2024}
                                     toYear={new Date().getFullYear() + 10}

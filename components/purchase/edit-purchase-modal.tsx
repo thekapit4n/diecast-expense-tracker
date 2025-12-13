@@ -212,6 +212,18 @@ export function EditPurchaseModal({
     loadInitialBrands()
   }, [supabase])
 
+  /**
+   * Helper function to parse date string from database in local timezone
+   * Prevents timezone conversion issues when reading dates
+   */
+  const parseDateFromDatabase = (dateString: string | null): Date | null => {
+    if (!dateString) return null
+    
+    // Parse the date string (YYYY-MM-DD) in local timezone
+    const [year, month, day] = dateString.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+
   // Fetch purchase data
   useEffect(() => {
     if (!open || !purchaseId) return
@@ -252,11 +264,11 @@ export function EditPurchaseModal({
             purchaseType: data.purchase_type || "",
             platform: data.platform || "",
             preOrderStatus: data.pre_order_status || "",
-            preOrderDate: data.pre_order_date ? new Date(data.pre_order_date) : null,
+            preOrderDate: parseDateFromDatabase(data.pre_order_date),
             paymentStatus: data.payment_status || "unpaid",
             paymentMethod: data.payment_method || "",
-            paymentDate: data.payment_date ? new Date(data.payment_date) : null,
-            arrivalDate: data.arrival_date ? new Date(data.arrival_date) : null,
+            paymentDate: parseDateFromDatabase(data.payment_date),
+            arrivalDate: parseDateFromDatabase(data.arrival_date),
             urlLink: data.url_link || "",
             isChase: data.is_chase ? "1" : "0",
             editionType: data.edition_type || "normal",
@@ -296,6 +308,21 @@ export function EditPurchaseModal({
     }))
   }
 
+  /**
+   * Helper function to format date to YYYY-MM-DD string
+   * This ensures dates are stored correctly without timezone conversion issues
+   */
+  const formatDateForDatabase = (date: Date | undefined | null): string | null => {
+    if (!date) return null
+    
+    // Format the date as YYYY-MM-DD using local timezone
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    
+    return `${year}-${month}-${day}`
+  }
+
   const onSubmit = async (data: EditPurchaseFormValues) => {
     setIsSubmitting(true)
     try {
@@ -331,11 +358,11 @@ export function EditPurchaseModal({
           purchase_type: data.purchaseType || null,
           platform: data.platform || null,
           pre_order_status: data.preOrderStatus || null,
-          pre_order_date: data.preOrderDate || null,
+          pre_order_date: formatDateForDatabase(data.preOrderDate),
           payment_status: data.paymentStatus || null,
           payment_method: data.paymentMethod || null,
-          payment_date: data.paymentDate || null,
-          arrival_date: data.arrivalDate || null,
+          payment_date: formatDateForDatabase(data.paymentDate),
+          arrival_date: formatDateForDatabase(data.arrivalDate),
           url_link: data.urlLink || null,
           is_chase: data.isChase === "1",
           edition_type: data.editionType || null,
@@ -827,6 +854,7 @@ export function EditPurchaseModal({
                                 mode="single"
                                 selected={field.value || undefined}
                                 onSelect={field.onChange}
+                                defaultMonth={field.value || undefined}
                                 captionLayout="dropdown"
                                 fromYear={2024}
                                 toYear={new Date().getFullYear()}
@@ -924,6 +952,7 @@ export function EditPurchaseModal({
                                     mode="single"
                                     selected={field.value || undefined}
                                     onSelect={field.onChange}
+                                    defaultMonth={field.value || undefined}
                                     captionLayout="dropdown"
                                     fromYear={2024}
                                     toYear={new Date().getFullYear() + 5}
@@ -967,6 +996,7 @@ export function EditPurchaseModal({
                                   mode="single"
                                   selected={field.value || undefined}
                                   onSelect={field.onChange}
+                                  defaultMonth={field.value || undefined}
                                   captionLayout="dropdown"
                                   fromYear={2024}
                                   toYear={new Date().getFullYear() + 10}
