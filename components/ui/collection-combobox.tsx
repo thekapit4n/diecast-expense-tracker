@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronsUpDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,6 +11,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command"
 import {
   Popover,
@@ -109,42 +110,72 @@ export function CollectionCombobox({
                 </div>
               </CommandEmpty>
             ) : (
-              <CommandGroup heading="Existing Collections (Select to reuse)">
-                {collections.map((collection) => (
-                  <CommandItem
-                    key={collection.id}
-                    value={collection.id}
-                    onSelect={() => {
-                      onValueChange(collection)
-                      onInputChange(collection.name)
-                      setOpen(false)
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === collection.id
-                          ? "opacity-100"
-                          : "opacity-0"
-                      )}
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{collection.name}</span>
-                        {collection.item_no && (
-                          <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
-                            {collection.item_no}
-                          </span>
+              <>
+                <CommandGroup heading="Existing Collections (Click to reuse)">
+                  {collections.map((collection) => (
+                    <CommandItem
+                      key={collection.id}
+                      value={collection.id}
+                      onSelect={() => {
+                        onValueChange(collection)
+                        onInputChange(collection.name)
+                        setOpen(false)
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === collection.id
+                            ? "opacity-100"
+                            : "opacity-0"
                         )}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{collection.name}</span>
+                          {collection.item_no && (
+                            <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                              {collection.item_no}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {collection.brand_name}
+                          {collection.scale && ` • ${collection.scale}`}
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {collection.brand_name}
-                        {collection.scale && ` • ${collection.scale}`}
-                      </div>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+                
+                {inputValue && inputValue.length >= 2 && (
+                  <>
+                    <CommandSeparator />
+                    <CommandGroup heading="Or Create New">
+                      <CommandItem
+                        value="__create_new__"
+                        onSelect={() => {
+                          onValueChange(null)
+                          setOpen(false)
+                        }}
+                        className="bg-muted/50"
+                      >
+                        <Plus className="mr-2 h-4 w-4 text-primary" />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-primary">
+                              Create new collection
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            "{inputValue}" with different brand/scale/item no
+                          </div>
+                        </div>
+                      </CommandItem>
+                    </CommandGroup>
+                  </>
+                )}
+              </>
             )}
           </CommandList>
         </Command>

@@ -549,7 +549,7 @@ export default function AddPurchasePage() {
                           </div>
                         </FormControl>
                         <FormDescription>
-                          Search for an existing collection or type a new name to create one
+                          Search and select existing collection, or create new collection with same/different details
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

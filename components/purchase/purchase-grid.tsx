@@ -178,10 +178,12 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         remark: item.remark,
       }))
 
-      // Sort by collection name ascending
-      const sortedData = formattedData.sort((a, b) => 
-        a.collection_name.localeCompare(b.collection_name)
-      )
+      // Sort by payment date descending (most recent first)
+      const sortedData = formattedData.sort((a, b) => {
+        const dateA = a.payment_date ? new Date(a.payment_date).getTime() : 0
+        const dateB = b.payment_date ? new Date(b.payment_date).getTime() : 0
+        return dateB - dateA // Descending order
+      })
 
       setPurchases(sortedData)
     } catch (err) {
@@ -213,7 +215,6 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
       filter: 'agTextColumnFilter',
       flex: 2,
       minWidth: 200,
-      sort: 'asc',
       filterParams: {
         filterOptions: ['contains', 'notContains', 'equals', 'notEqual', 'startsWith', 'endsWith'],
         defaultOption: 'contains',
@@ -369,6 +370,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
       field: "payment_date",
       headerName: "Payment Date",
       sortable: true,
+      sort: 'desc',
       filter: 'agDateColumnFilter',
       width: 140,
       valueFormatter: (params) => {
