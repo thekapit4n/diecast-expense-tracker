@@ -111,6 +111,7 @@ export function EditPurchaseModal({
   
   // LOV states
   const [showBrandLOV, setShowBrandLOV] = useState(false)
+  const [showScaleLOV, setShowScaleLOV] = useState(false)
   const [showPlatformLOV, setShowPlatformLOV] = useState(false)
   const [showPaymentMethodLOV, setShowPaymentMethodLOV] = useState(false)
   const [showCountryLOV, setShowCountryLOV] = useState(false)
@@ -537,6 +538,16 @@ export function EditPurchaseModal({
     { id: "event_blister", label: "Event Blister" },
   ]
 
+  const scaleLOVItems: LOVItem[] = [
+    { id: "1:12", label: "1:12" },
+    { id: "1:18", label: "1:18" },
+    { id: "1:24", label: "1:24" },
+    { id: "1:32", label: "1:32" },
+    { id: "1:43", label: "1:43" },
+    { id: "1:64", label: "1:64" },
+    { id: "1:110", label: "1:110" },
+  ]
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -634,12 +645,7 @@ export function EditPurchaseModal({
                                 type="button"
                                 variant="outline"
                                 className="w-full justify-between"
-                                onClick={() => {
-                                  const scales = ["1:12", "1:18", "1:24", "1:32", "1:43", "1:64"]
-                                  const currentIndex = scales.indexOf(field.value || "1:64")
-                                  const nextIndex = (currentIndex + 1) % scales.length
-                                  field.onChange(scales[nextIndex])
-                                }}
+                                onClick={() => setShowScaleLOV(true)}
                               >
                                 {field.value || "1:64"}
                               </Button>
@@ -1407,6 +1413,16 @@ export function EditPurchaseModal({
         value={form.watch("packagingType")}
         onValueChange={(value) => form.setValue("packagingType", value.toString())}
         searchPlaceholder="Search packaging types..."
+      />
+
+      <LOVSelector
+        open={showScaleLOV}
+        onOpenChange={setShowScaleLOV}
+        title="Select Scale"
+        items={scaleLOVItems}
+        value={form.watch("scale")}
+        onValueChange={(value) => form.setValue("scale", value.toString())}
+        searchPlaceholder="Search scales..."
       />
     </>
   )

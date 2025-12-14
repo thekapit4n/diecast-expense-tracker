@@ -645,6 +645,7 @@ export default function AddPurchasePage() {
                                 <SelectItem value="1:32">1:32</SelectItem>
                                 <SelectItem value="1:43">1:43</SelectItem>
                                 <SelectItem value="1:64">1:64</SelectItem>
+                                <SelectItem value="1:110">1:110</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
