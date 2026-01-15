@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/popover"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
-import { cn } from "@/lib/utils"
+import { cn, formatDateForDatabase } from "@/lib/utils"
 import { LOVSelector, LOVItem } from "@/components/ui/lov-selector"
 import { useUserTracking } from "@/lib/auth/use-user-tracking"
 
@@ -309,20 +309,6 @@ export function EditPurchaseModal({
     }))
   }
 
-  /**
-   * Helper function to format date to YYYY-MM-DD string
-   * This ensures dates are stored correctly without timezone conversion issues
-   */
-  const formatDateForDatabase = (date: Date | undefined | null): string | null => {
-    if (!date) return null
-    
-    // Format the date as YYYY-MM-DD using local timezone
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    
-    return `${year}-${month}-${day}`
-  }
 
   const onSubmit = async (data: EditPurchaseFormValues) => {
     setIsSubmitting(true)

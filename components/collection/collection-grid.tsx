@@ -1,10 +1,12 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { AgGridReact } from "ag-grid-react"
 import { ColDef, ModuleRegistry } from "ag-grid-community"
 import { AllEnterpriseModule, SetFilterModule } from "ag-grid-enterprise"
-import { format } from "date-fns"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
 
 // Register AG Grid modules (Enterprise only)
 // AllEnterpriseModule includes all Enterprise features
@@ -14,236 +16,177 @@ ModuleRegistry.registerModules([AllEnterpriseModule, SetFilterModule])
 // Type definition for collection items
 export interface CollectionItem {
   id: string
-  itemName: string
-  category: string
-  brand: string
-  scale: string
-  purchaseDate: Date
-  purchasePrice: number
-  currency: string
-  condition: string
-  status: string
-  description?: string
+  name: string
+  item_no: string | null
+  brand_id: number | null
+  brand_name: string
+  scale: string | null
+  remark: string | null
+  created_at: number | null
+  created_by: string | null
+  updated_at: number | null
+  updated_by: string | null
 }
 
-// Dummy data for collection
-const dummyCollectionData: CollectionItem[] = [
-  {
-    id: "1",
-    itemName: "Nissan Skyline GT-R R34",
-    category: "Hot Wheels",
-    brand: "Hot Wheels Premium",
-    scale: "1:64",
-    purchaseDate: new Date("2024-01-15"),
-    purchasePrice: 25.99,
-    currency: "MYR",
-    condition: "New",
-    status: "Owned",
-    description: "2024 Premium series",
-  },
-  {
-    id: "2",
-    itemName: "Porsche 911 GT3",
-    category: "Matchbox",
-    brand: "Matchbox Collectors",
-    scale: "1:64",
-    purchaseDate: new Date("2024-01-10"),
-    purchasePrice: 18.50,
-    currency: "MYR",
-    condition: "New",
-    status: "Owned",
-    description: "Collectors edition",
-  },
-  {
-    id: "3",
-    itemName: "Ford Mustang GT",
-    category: "Greenlight",
-    brand: "Greenlight Models",
-    scale: "1:64",
-    purchaseDate: new Date("2024-01-05"),
-    purchasePrice: 45.00,
-    currency: "MYR",
-    condition: "New",
-    status: "Owned",
-    description: "1:64 scale",
-  },
-  {
-    id: "4",
-    itemName: "Lamborghini Aventador",
-    category: "Hot Wheels",
-    brand: "Hot Wheels RLC",
-    scale: "1:64",
-    purchaseDate: new Date("2023-12-20"),
-    purchasePrice: 35.00,
-    currency: "MYR",
-    condition: "New",
-    status: "Owned",
-    description: "Red Line Club exclusive",
-  },
-  {
-    id: "5",
-    itemName: "Tesla Model 3",
-    category: "Matchbox",
-    brand: "Matchbox",
-    scale: "1:64",
-    purchaseDate: new Date("2023-12-15"),
-    purchasePrice: 12.99,
-    currency: "MYR",
-    condition: "New",
-    status: "Owned",
-    description: "Basic series",
-  },
-  {
-    id: "6",
-    itemName: "Toyota Supra MK4",
-    category: "Hot Wheels",
-    brand: "Hot Wheels Premium",
-    scale: "1:64",
-    purchaseDate: new Date("2024-02-01"),
-    purchasePrice: 28.50,
-    currency: "MYR",
-    condition: "New",
-    status: "Owned",
-    description: "2024 Premium series",
-  },
-  {
-    id: "7",
-    itemName: "BMW M3 E46",
-    category: "Greenlight",
-    brand: "Greenlight Models",
-    scale: "1:64",
-    purchaseDate: new Date("2024-01-20"),
-    purchasePrice: 42.00,
-    currency: "MYR",
-    condition: "New",
-    status: "Pre-ordered",
-    description: "Pre-order - Arriving March 2024",
-  },
-  {
-    id: "8",
-    itemName: "Dodge Charger Hellcat",
-    category: "Auto World",
-    brand: "Auto World",
-    scale: "1:64",
-    purchaseDate: new Date("2023-11-10"),
-    purchasePrice: 15.99,
-    currency: "MYR",
-    condition: "New",
-    status: "Owned",
-    description: "Ultra Red series",
-  },
-  {
-    id: "9",
-    itemName: "McLaren P1",
-    category: "Hot Wheels",
-    brand: "Hot Wheels RLC",
-    scale: "1:64",
-    purchaseDate: new Date("2023-10-05"),
-    purchasePrice: 40.00,
-    currency: "MYR",
-    condition: "New",
-    status: "Owned",
-    description: "Red Line Club exclusive",
-  },
-  {
-    id: "10",
-    itemName: "Audi R8",
-    category: "Matchbox",
-    brand: "Matchbox Collectors",
-    scale: "1:64",
-    purchaseDate: new Date("2024-01-25"),
-    purchasePrice: 19.99,
-    currency: "MYR",
-    condition: "New",
-    status: "Owned",
-    description: "Collectors edition",
-  },
-]
-
 export function CollectionGrid() {
+  const [collections, setCollections] = useState<CollectionItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const supabase = createClient()
+
+  const fetchCollections = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error } = await supabase
+        .from("tbl_collection")
+        .select(`
+          id,
+          name,
+          item_no,
+          brand_id,
+          scale,
+          remark,
+          created_at,
+          created_by,
+          updated_at,
+          updated_by,
+          tbl_master_brand(name)
+        `)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        throw error
+      }
+
+      const formattedData: CollectionItem[] = (data || []).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        item_no: item.item_no,
+        brand_id: item.brand_id,
+        brand_name: item.tbl_master_brand?.name || "Unknown",
+        scale: item.scale,
+        remark: item.remark,
+        created_at: item.created_at,
+        created_by: item.created_by,
+        updated_at: item.updated_at,
+        updated_by: item.updated_by,
+      }))
+
+      setCollections(formattedData)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch collections'
+      setError(errorMessage)
+      toast.error(`Error loading collections: ${errorMessage}`)
+      console.error('Error fetching collections:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [supabase])
+
+  useEffect(() => {
+    fetchCollections()
+  }, [fetchCollections])
+
   // Column definitions
   const columnDefs: ColDef<CollectionItem>[] = useMemo(
     () => [
       {
-        field: "itemName",
-        headerName: "Item Name",
+        field: "name",
+        headerName: "Name",
         sortable: true,
-        filter: true,
+        filter: 'agTextColumnFilter',
         flex: 2,
         minWidth: 200,
+        filterParams: {
+          filterOptions: ['contains', 'notContains', 'equals', 'notEqual', 'startsWith', 'endsWith'],
+          defaultOption: 'contains',
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+        },
       },
       {
-        field: "category",
-        headerName: "Category",
+        field: "item_no",
+        headerName: "Item No",
         sortable: true,
-        filter: true,
-        flex: 1,
-        minWidth: 120,
+        filter: 'agTextColumnFilter',
+        width: 120,
+        filterParams: {
+          filterOptions: ['contains', 'equals', 'startsWith'],
+          defaultOption: 'contains',
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+        },
       },
       {
-        field: "brand",
+        field: "brand_name",
         headerName: "Brand",
         sortable: true,
-        filter: true,
+        filter: 'agTextColumnFilter',
         flex: 1.5,
         minWidth: 150,
+        filterParams: {
+          filterOptions: ['contains', 'equals', 'startsWith'],
+          defaultOption: 'contains',
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+        },
       },
       {
         field: "scale",
         headerName: "Scale",
         sortable: true,
-        filter: true,
+        filter: 'agTextColumnFilter',
         width: 100,
+        filterParams: {
+          filterOptions: ['equals', 'contains'],
+          defaultOption: 'equals',
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+        },
       },
       {
-        field: "purchaseDate",
-        headerName: "Purchase Date",
+        field: "remark",
+        headerName: "Remark",
         sortable: true,
-        filter: true,
+        filter: 'agTextColumnFilter',
+        flex: 1,
+        minWidth: 200,
+        filterParams: {
+          filterOptions: ['contains', 'equals'],
+          defaultOption: 'contains',
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+        },
+      },
+      {
+        field: "created_at",
+        headerName: "Created At",
+        sortable: true,
+        filter: 'agDateColumnFilter',
         width: 150,
         valueFormatter: (params) => {
           if (params.value) {
-            return format(new Date(params.value), "MMM dd, yyyy")
+            // Convert epoch timestamp to date
+            const date = new Date(params.value * 1000)
+            return date.toLocaleDateString("en-GB")
           }
           return ""
         },
-      },
-      {
-        field: "purchasePrice",
-        headerName: "Price",
-        sortable: true,
-        filter: true,
-        width: 130,
-        valueFormatter: (params) => {
-          if (params.data) {
-            return `${params.data.currency} ${params.value.toFixed(2)}`
-          }
-          return ""
-        },
-        type: "numericColumn",
-      },
-      {
-        field: "condition",
-        headerName: "Condition",
-        sortable: true,
-        filter: true,
-        width: 120,
-      },
-      {
-        field: "status",
-        headerName: "Status",
-        sortable: true,
-        filter: true,
-        width: 130,
-        cellRenderer: (params: any) => {
-          const status = params.value
-          const statusColors: Record<string, string> = {
-            Owned: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-            "Pre-ordered": "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-            "On Order": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-          }
-          const colorClass = statusColors[status] || "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-          return `<span class="px-2 py-1 rounded-full text-xs font-medium ${colorClass}">${status}</span>`
+        filterParams: {
+          filterOptions: ['equals', 'lessThan', 'greaterThan', 'inRange'],
+          defaultOption: 'equals',
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+          comparator: (filterDate: Date, cellValue: number | null) => {
+            if (!cellValue) return -1
+            const cellDate = new Date(cellValue * 1000)
+            cellDate.setHours(0, 0, 0, 0)
+            filterDate.setHours(0, 0, 0, 0)
+            if (cellDate < filterDate) return -1
+            if (cellDate > filterDate) return 1
+            return 0
+          },
         },
       },
     ],
@@ -259,15 +202,39 @@ export function CollectionGrid() {
     []
   )
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-gray-100 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading collections...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
+        <div className="text-center">
+          <p className="text-red-600 dark:text-red-400 mb-4">Error: {error}</p>
+          <Button onClick={fetchCollections} variant="default">
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="ag-theme-quartz w-full h-[600px]">
+    <div className="ag-theme-quartz w-full h-[calc(100vh-12rem)]">
       <AgGridReact<CollectionItem>
         theme="legacy"
-        rowData={dummyCollectionData}
+        rowData={collections}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
         pagination={true}
-        paginationPageSize={10}
+        paginationPageSize={100}
         paginationPageSizeSelector={[10, 20, 50, 100]}
         animateRows={true}
         rowSelection={{

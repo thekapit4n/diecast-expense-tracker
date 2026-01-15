@@ -6,6 +6,7 @@ import { DollarSign, Package, TrendingUp, Calendar, Loader2, RefreshCw } from "l
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { formatDistanceToNow } from "date-fns"
+import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
@@ -32,6 +33,40 @@ interface TopBrand {
   brand_name: string
   total_spent: number
   percentage: number
+}
+
+/**
+ * Helper function to format date using Luxon
+ * Formats the date in the specified timezone, showing "today" if the date is today
+ * 
+ * @param dateString - Date string in YYYY-MM-DD format (stored as DATE in database)
+ * @param timezone - IANA timezone identifier (defaults to 'Asia/Kuala_Lumpur')
+ * @param format - Date format string (defaults to 'dd MMM yyyy' e.g., "15 Jan 2024")
+ * @param fallbackText - Text to return when dateString is null (defaults to 'No payment date')
+ * @returns Formatted date string or "today" if the date is today
+ */
+function formatDate(
+  dateString: string | null,
+  timezone: string = 'Asia/Kuala_Lumpur',
+  format: string = 'dd MMM yyyy',
+  fallbackText: string = 'No payment date'
+): string {
+  if (!dateString) return fallbackText
+  
+  // Parse date string and set to specified timezone
+  const date = DateTime.fromISO(dateString, { zone: timezone })
+    .startOf('day')
+  
+  // Get current date in specified timezone
+  const now = DateTime.now().setZone(timezone).startOf('day')
+  
+  // Check if the date is today
+  if (date.hasSame(now, 'day')) {
+    return 'Today'
+  }
+  
+  // Format the date
+  return date.toFormat(format)
 }
 
 export default function DashboardPage() {
@@ -462,9 +497,7 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 {recentPurchases.map((purchase) => {
-                  const displayDate = purchase.payment_date 
-                    ? formatDistanceToNow(new Date(purchase.payment_date), { addSuffix: true })
-                    : 'No payment date'
+                  const displayDate = formatDate(purchase.payment_date)
                   
                   return (
                     <div key={purchase.id} className="flex items-center justify-between">

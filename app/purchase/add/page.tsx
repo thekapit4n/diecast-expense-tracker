@@ -34,7 +34,7 @@ import {
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { cn } from "@/lib/utils"
+import { cn, formatDateForDatabase } from "@/lib/utils"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { BrandCombobox } from "@/components/ui/brand-combobox"
 import { CollectionCombobox, type CollectionOption } from "@/components/ui/collection-combobox"
@@ -348,20 +348,6 @@ export default function AddPurchasePage() {
     toast.success("Purchase detail duplicated")
   }
 
-  /**
-   * Helper function to format date to YYYY-MM-DD string
-   * This ensures dates are stored correctly without timezone conversion issues
-   */
-  const formatDateForDatabase = (date: Date | undefined | null): string | null => {
-    if (!date) return null
-    
-    // Format the date as YYYY-MM-DD using local timezone
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    
-    return `${year}-${month}-${day}`
-  }
 
   const onSubmit = async (data: PurchaseFormValues) => {
     setIsSubmitting(true)

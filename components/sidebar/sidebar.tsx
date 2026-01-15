@@ -142,10 +142,6 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         { href: "/management/brands", label: "Brand", icon: Tag },
       ],
     },
-    { href: "/categories", label: "Categories", icon: Folder },
-    { href: "/settings", label: "Settings", icon: Settings },
-    { href: "/preorders", label: "Preorders", icon: PackageSearch },
-    { href: "/dioramas", label: "Dioramas", icon: Building2 },
     { onClick: signOut, label: "Logout", icon: LogOut },
   ]
 
