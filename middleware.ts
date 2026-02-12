@@ -1,8 +1,16 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const response = NextResponse.next()
+
+  /*
+   * Skip authentication for cron job endpoints
+   * These routes handle their own authentication via CRON_SECRET
+   */
+  if (request.nextUrl.pathname.startsWith('/api/cron/')) {
+    return response
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

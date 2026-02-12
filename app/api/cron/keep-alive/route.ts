@@ -1,5 +1,5 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies, headers } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
+import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 /**
@@ -21,18 +21,15 @@ export async function GET(request: Request) {
         { status: 401 }
       );
     }
-    const cookieStore = await cookies();
-    
-    const supabase = createServerClient(
+
+    /*
+     * Create a Supabase client using service role key
+     * This bypasses RLS and doesn't require authentication/cookies
+     * Perfect for cron jobs and server-side operations
+     */
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-        },
-      }
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     /*
@@ -42,8 +39,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from('tbl_master_brand')
       .select('id')
-      .limit(1)
-      .single();
+      .limit(1);
 
     if (error) {
       console.error('Database ping error:', error);
@@ -61,7 +57,7 @@ export async function GET(request: Request) {
       success: true,
       message: 'Database connection active',
       timestamp: new Date().toISOString(),
-      data: data
+      queryResult: data?.length || 0
     });
 
   } catch (error) {
