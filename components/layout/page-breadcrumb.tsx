@@ -30,6 +30,7 @@ const routeLabels: Record<string, string> = {
   categories: "Categories",
   management: "Management",
   brands: "Brands",
+  shops: "Shops",
   settings: "Settings",
 }
 

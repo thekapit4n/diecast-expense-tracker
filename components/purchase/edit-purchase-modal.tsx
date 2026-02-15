@@ -35,6 +35,8 @@ import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { cn, formatDateForDatabase } from "@/lib/utils"
 import { LOVSelector, LOVItem } from "@/components/ui/lov-selector"
+import { ShopCombobox } from "@/components/ui/shop-combobox"
+import { resolveOrCreateShop } from "@/lib/shop/resolve-or-create"
 import { useUserTracking } from "@/lib/auth/use-user-tracking"
 
 const editPurchaseSchema = z.object({
@@ -333,8 +335,13 @@ export function EditPurchaseModal({
         return
       }
 
-      // 2. Update purchase
+      // 2. Resolve or create shop and update purchase
       const totalPriceCalculated = parseInt(data.quantity) * parseFloat(data.pricePerUnit)
+      const { shopId } = await resolveOrCreateShop(supabase, {
+        shopName: data.shopName,
+        address: data.address,
+        country: data.country,
+      })
 
       const { error: purchaseError } = await supabase
         .from("tbl_purchase")
@@ -356,6 +363,7 @@ export function EditPurchaseModal({
           packaging_type: data.packagingType || null,
           size_detail: data.sizeDetail || null,
           has_acrylic: data.hasAcrylic === "1",
+          shop_id: shopId,
           shop_name: data.shopName || null,
           address: data.address || null,
           country: data.country || null,
@@ -1146,6 +1154,23 @@ export function EditPurchaseModal({
                 {/* Shop Information */}
                 <div className="space-y-4 border-t pt-4">
                   <h4 className="text-sm font-semibold">Shop Information</h4>
+                  <div className="space-y-2">
+                    <FormLabel>Search existing shop</FormLabel>
+                    <FormDescription>
+                      Search or select an existing shop first. If not found, enter the details below and save—the shop will be added to the database.
+                    </FormDescription>
+                    <ShopCombobox
+                      value={form.watch("shopName")}
+                      onSelect={(shop) => {
+                        if (shop) {
+                          form.setValue("shopName", shop.shop_name ?? "")
+                          form.setValue("address", shop.address ?? "")
+                          form.setValue("country", shop.country ?? "")
+                        }
+                      }}
+                      placeholder="Search or select shop..."
+                    />
+                  </div>
                   <FormField
                     control={form.control}
                     name="shopName"

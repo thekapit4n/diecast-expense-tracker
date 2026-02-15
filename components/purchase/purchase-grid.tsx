@@ -88,6 +88,7 @@ export interface PurchaseItem {
   packaging_type: string | null
   size_detail: string | null
   has_acrylic: boolean
+  shop_id: string | null
   shop_name: string | null
   address: string | null
   country: string | null
@@ -132,6 +133,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
           packaging_type,
           size_detail,
           has_acrylic,
+          shop_id,
           shop_name,
           address,
           country,
@@ -172,6 +174,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         packaging_type: item.packaging_type,
         size_detail: item.size_detail,
         has_acrylic: item.has_acrylic,
+        shop_id: item.shop_id ?? null,
         shop_name: item.shop_name,
         address: item.address,
         country: item.country,
@@ -556,10 +559,10 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
       headerName: "Shop Name",
       sortable: true,
       filter: 'agTextColumnFilter',
-      width: 150,
-      hide: true,
+      flex: 2,
+      minWidth: 200,
       filterParams: {
-        filterOptions: ['contains', 'equals', 'startsWith'],
+        filterOptions: ['contains', 'notContains', 'equals', 'notEqual', 'startsWith', 'endsWith'],
         defaultOption: 'contains',
         buttons: ['reset', 'apply'],
         closeOnApply: true,

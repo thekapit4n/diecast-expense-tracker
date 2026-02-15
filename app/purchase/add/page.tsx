@@ -39,6 +39,8 @@ import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { BrandCombobox } from "@/components/ui/brand-combobox"
 import { CollectionCombobox, type CollectionOption } from "@/components/ui/collection-combobox"
 import { ItemNoCombobox } from "@/components/ui/item-no-combobox"
+import { ShopCombobox } from "@/components/ui/shop-combobox"
+import { resolveOrCreateShop } from "@/lib/shop/resolve-or-create"
 import { useUserTracking } from "@/lib/auth/use-user-tracking"
 
 const purchaseDetailSchema = z.object({
@@ -385,6 +387,11 @@ export default function AddPurchasePage() {
       let successCount = 0
       for (const detail of data.purchaseDetails) {
         const totalPrice = parseInt(detail.quantity) * parseFloat(detail.pricePerUnit)
+        const { shopId } = await resolveOrCreateShop(supabase, {
+          shopName: detail.shopName,
+          address: detail.address,
+          country: detail.country,
+        })
 
         const { data: purchaseData, error: purchaseError } = await supabase
           .from("tbl_purchase")
@@ -407,6 +414,7 @@ export default function AddPurchasePage() {
             packaging_type: detail.packagingType || null,
             size_detail: detail.sizeDetail || null,
             has_acrylic: detail.hasAcrylic === "1",
+            shop_id: shopId,
             shop_name: detail.shopName || null,
             address: detail.address || null,
             country: detail.country || null,
@@ -1172,6 +1180,23 @@ export default function AddPurchasePage() {
                       {/* Shop Information */}
                       <div className="space-y-4 border-t pt-4">
                         <h4 className="text-sm font-semibold">Shop Information</h4>
+                        <div className="space-y-2">
+                          <FormLabel>Search existing shop</FormLabel>
+                          <FormDescription>
+                            Search or select an existing shop first. If not found, enter the details below and save the purchase—the shop will be added to the database.
+                          </FormDescription>
+                          <ShopCombobox
+                            value={form.watch(`purchaseDetails.${index}.shopName`)}
+                            onSelect={(shop) => {
+                              if (shop) {
+                                form.setValue(`purchaseDetails.${index}.shopName`, shop.shop_name ?? "")
+                                form.setValue(`purchaseDetails.${index}.address`, shop.address ?? "")
+                                form.setValue(`purchaseDetails.${index}.country`, shop.country ?? "")
+                              }
+                            }}
+                            placeholder="Search or select shop..."
+                          />
+                        </div>
                         <FormField
                           control={form.control}
                           name={`purchaseDetails.${index}.shopName`}

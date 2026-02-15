@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { Home, List, Plus, Folder, Settings, ChevronLeft, ChevronRight, Car, ReceiptText, PackageSearch, Building2, Settings2, ChevronDown, Tag, ShoppingCart, PlusCircle, LogOut, User } from "lucide-react"
+import { Home, List, Plus, Folder, Settings, ChevronLeft, ChevronRight, Car, ReceiptText, PackageSearch, Building2, Settings2, ChevronDown, Tag, ShoppingCart, PlusCircle, LogOut, User, Store } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/auth-context"
@@ -140,6 +140,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       icon: Settings2,
       children: [
         { href: "/management/brands", label: "Brand", icon: Tag },
+        { href: "/management/shops", label: "Shop", icon: Store },
       ],
     },
     { onClick: signOut, label: "Logout", icon: LogOut },
