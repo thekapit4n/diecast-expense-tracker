@@ -2,7 +2,7 @@
 
 import { useEffect, useState, forwardRef, useImperativeHandle, useMemo, useCallback } from "react"
 import { AgGridReact } from "ag-grid-react"
-import { ColDef, ModuleRegistry, ICellRendererParams, GetContextMenuItemsParams, MenuItemDef } from "ag-grid-community"
+import { ColDef, ModuleRegistry, ICellRendererParams, GetContextMenuItemsParams, FirstDataRenderedEvent } from "ag-grid-community"
 import { AllEnterpriseModule, SetFilterModule } from "ag-grid-enterprise"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -672,6 +672,10 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
     reload()
   }, [reload])
 
+  const handleFirstDataRendered = useCallback((event: FirstDataRenderedEvent<PurchaseItem>) => {
+    event.api.autoSizeColumns(["collection_name", "item_no", "brand_name"])
+  }, [])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
@@ -714,6 +718,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
               enableClickSelection: true,
             }}
             domLayout="normal"
+            onFirstDataRendered={handleFirstDataRendered}
             getContextMenuItems={getContextMenuItems as any}
           />
         )}

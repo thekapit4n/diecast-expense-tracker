@@ -806,6 +806,7 @@ export default function AddPurchasePage() {
                                   <SelectContent>
                                     <SelectItem value="shopee">Shopee</SelectItem>
                                     <SelectItem value="lazada">Lazada</SelectItem>
+                                    <SelectItem value="japan_mercari">Japan Mercari</SelectItem>
                                     <SelectItem value="carousell">Carousell</SelectItem>
                                     <SelectItem value="tiktok">Tiktok</SelectItem>
                                     <SelectItem value="facebook">Facebook Marketplace</SelectItem>

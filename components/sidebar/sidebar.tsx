@@ -125,7 +125,14 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
   const menuItems: MenuItem[] = [
     { href: "/", label: "Dashboard", icon: Home },
-    { href: "/collection", label: "My Collection", icon: Car },
+    {
+      label: "My Collection",
+      icon: Car,
+      children: [
+        { href: "/collection", label: "List", icon: List },
+        { href: "/collection/mini-gt", label: "Mini GT", icon: PackageSearch },
+      ],
+    },
     
     {
       label: "Purchases",
@@ -141,6 +148,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       children: [
         { href: "/management/brands", label: "Brand", icon: Tag },
         { href: "/management/shops", label: "Shop", icon: Store },
+        { href: "/management/image-import", label: "Image Import", icon: PackageSearch },
       ],
     },
     { onClick: signOut, label: "Logout", icon: LogOut },

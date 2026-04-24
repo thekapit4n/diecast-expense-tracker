@@ -463,6 +463,7 @@ export function EditPurchaseModal({
   const platformLOVItems: LOVItem[] = [
     { id: "shopee", label: "Shopee" },
     { id: "lazada", label: "Lazada" },
+    { id: "japan_mercari", label: "Japan Mercari" },
     { id: "carousell", label: "Carousell" },
     { id: "tiktok", label: "Tiktok" },
     { id: "facebook", label: "Facebook Marketplace" },

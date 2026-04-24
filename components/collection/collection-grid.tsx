@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { AgGridReact } from "ag-grid-react"
-import { ColDef, ModuleRegistry } from "ag-grid-community"
+import { ColDef, ModuleRegistry, FirstDataRenderedEvent } from "ag-grid-community"
 import { AllEnterpriseModule, SetFilterModule } from "ag-grid-enterprise"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -202,6 +202,10 @@ export function CollectionGrid() {
     []
   )
 
+  const handleFirstDataRendered = useCallback((event: FirstDataRenderedEvent<CollectionItem>) => {
+    event.api.autoSizeColumns(["name", "item_no", "brand_name"])
+  }, [])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
@@ -242,6 +246,7 @@ export function CollectionGrid() {
           enableClickSelection: true,
         }}
         domLayout="normal"
+        onFirstDataRendered={handleFirstDataRendered}
       />
     </div>
   )
