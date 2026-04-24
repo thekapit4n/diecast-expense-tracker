@@ -182,10 +182,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (collection?.id) {
-      const existingRemark = collection.remark || ""
+      const existingRemark: string = collection.remark || ""
       const existingLines = existingRemark
         .split("\n")
-        .map((line) => line.trim())
+        .map((line: string) => line.trim())
         .filter(Boolean)
       const mergedLines = [...new Set([...existingLines, ...savedUrls])]
       const mergedRemark = mergedLines.join("\n")
