@@ -7,6 +7,7 @@ import { AllEnterpriseModule, SetFilterModule } from "ag-grid-enterprise"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Link as LinkIcon } from "lucide-react"
 
 // Register AG Grid modules (Enterprise only)
 // AllEnterpriseModule includes all Enterprise features
@@ -33,6 +34,16 @@ export function CollectionGrid() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
+  const isMiniGtSeries = useCallback((brandName: string | null, itemNo: string | null) => {
+    const normalizedBrand = (brandName || "").toLowerCase()
+    const normalizedItemNo = (itemNo || "").trim().toUpperCase()
+    return normalizedBrand.includes("mini gt") && /^MGT\d{5}/.test(normalizedItemNo)
+  }, [])
+
+  const openMiniGtModel = useCallback((itemNo: string) => {
+    const encodedItemNo = encodeURIComponent(itemNo.trim().toUpperCase())
+    window.location.href = `/collection/mini-gt?itemNo=${encodedItemNo}&open=1`
+  }, [])
 
   const fetchCollections = useCallback(async () => {
     setLoading(true)
@@ -152,6 +163,7 @@ export function CollectionGrid() {
         filter: 'agTextColumnFilter',
         flex: 1,
         minWidth: 200,
+        hide: true,
         filterParams: {
           filterOptions: ['contains', 'equals'],
           defaultOption: 'contains',
@@ -189,8 +201,35 @@ export function CollectionGrid() {
           },
         },
       },
+      {
+        headerName: "",
+        colId: "mini_gt_action",
+        width: 110,
+        sortable: false,
+        filter: false,
+        suppressHeaderMenuButton: true,
+        cellRenderer: (params: any) => {
+          const itemNo = params.data?.item_no || ""
+          const brandName = params.data?.brand_name || ""
+          if (!isMiniGtSeries(brandName, itemNo)) {
+            return null
+          }
+
+          return (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              aria-label="Open Mini GT collection"
+              onClick={() => openMiniGtModel(itemNo)}
+            >
+              <LinkIcon className="h-4 w-4" />
+            </Button>
+          )
+        },
+      },
     ],
-    []
+    [isMiniGtSeries, openMiniGtModel]
   )
 
   const defaultColDef = useMemo(

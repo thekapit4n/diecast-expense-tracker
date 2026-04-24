@@ -26,6 +26,7 @@ export interface CollectionOption {
   brand_id: number
   brand_name: string
   scale: string | null
+  remark?: string | null
 }
 
 interface CollectionComboboxProps {

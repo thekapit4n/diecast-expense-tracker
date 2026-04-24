@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Search, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, RefreshCw, Search, X } from "lucide-react"
 import { toast } from "sonner"
 
 interface MiniGtCollectionItem {
@@ -31,6 +31,7 @@ export default function MiniGtCollectionPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [isCarouselExpanded, setIsCarouselExpanded] = useState(false)
   const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(new Set())
+  const [hasAppliedInitialOpen, setHasAppliedInitialOpen] = useState(false)
 
   const extractImageUrls = (remark: string | null): string[] => {
     if (!remark) return []
@@ -44,87 +45,114 @@ export default function MiniGtCollectionPage() {
 
     const normalizedSeries = itemNo.trim().toUpperCase()
     const detectedSeries = normalizedSeries.match(/MGT\d+/)?.[0] || normalizedSeries
-    return Array.from({ length: 12 }, (_, index) => `/api/mini-gt/image/${detectedSeries}/${index + 1}.jpg`)
+    return Array.from({ length: 4 }, (_, index) => `/api/mini-gt/image/${detectedSeries}/${index + 1}.jpg`)
   }
 
-  useEffect(() => {
-    const fetchMiniGtCollection = async () => {
-      try {
-        const [{ data: collectionData, error: collectionError }, { data: purchaseData, error: purchaseError }] = await Promise.all([
-          supabase
-            .from("tbl_collection")
-            .select(`
-              id,
-              name,
-              item_no,
-              scale,
-              remark,
-              tbl_master_brand(name)
-            `)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("tbl_purchase")
-            .select("collection_id, quantity, total_price"),
-        ])
+  const fetchMiniGtCollection = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [{ data: collectionData, error: collectionError }, { data: purchaseData, error: purchaseError }] = await Promise.all([
+        supabase
+          .from("tbl_collection")
+          .select(`
+            id,
+            name,
+            item_no,
+            scale,
+            remark,
+            tbl_master_brand(name)
+          `)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("tbl_purchase")
+          .select("collection_id, quantity, total_price"),
+      ])
 
-        if (collectionError) throw collectionError
-        if (purchaseError) throw purchaseError
+      if (collectionError) throw collectionError
+      if (purchaseError) throw purchaseError
 
-        const purchaseSummaryMap = new Map<string, { purchaseCount: number; totalOwnedQuantity: number; totalSpent: number }>()
+      const purchaseSummaryMap = new Map<string, { purchaseCount: number; totalOwnedQuantity: number; totalSpent: number }>()
 
-        ;(purchaseData || []).forEach((purchase: any) => {
-          if (!purchase.collection_id) return
+      ;(purchaseData || []).forEach((purchase: any) => {
+        if (!purchase.collection_id) return
 
-          const existingSummary = purchaseSummaryMap.get(purchase.collection_id) || {
+        const existingSummary = purchaseSummaryMap.get(purchase.collection_id) || {
+          purchaseCount: 0,
+          totalOwnedQuantity: 0,
+          totalSpent: 0,
+        }
+
+        existingSummary.purchaseCount += 1
+        existingSummary.totalOwnedQuantity += Number(purchase.quantity || 0)
+        existingSummary.totalSpent += Number(purchase.total_price || 0)
+
+        purchaseSummaryMap.set(purchase.collection_id, existingSummary)
+      })
+
+      const formatted = (collectionData || [])
+        .map((item: any) => {
+          const purchaseSummary = purchaseSummaryMap.get(item.id) || {
             purchaseCount: 0,
             totalOwnedQuantity: 0,
             totalSpent: 0,
           }
 
-          existingSummary.purchaseCount += 1
-          existingSummary.totalOwnedQuantity += Number(purchase.quantity || 0)
-          existingSummary.totalSpent += Number(purchase.total_price || 0)
-
-          purchaseSummaryMap.set(purchase.collection_id, existingSummary)
+          return {
+            id: item.id,
+            name: item.name,
+            item_no: item.item_no,
+            scale: item.scale,
+            remark: item.remark,
+            brand_name: item.tbl_master_brand?.name || "",
+            imageUrls: [
+              ...getLocalSeriesImages(item.item_no),
+              ...extractImageUrls(item.remark),
+            ],
+            purchaseCount: purchaseSummary.purchaseCount,
+            totalOwnedQuantity: purchaseSummary.totalOwnedQuantity,
+            totalSpent: purchaseSummary.totalSpent,
+          }
         })
+        .filter((item) => item.brand_name.toLowerCase().includes("mini gt"))
 
-        const formatted = (collectionData || [])
-          .map((item: any) => {
-            const purchaseSummary = purchaseSummaryMap.get(item.id) || {
-              purchaseCount: 0,
-              totalOwnedQuantity: 0,
-              totalSpent: 0,
-            }
+      setItems(formatted)
+    } catch (error) {
+      console.error("Error fetching Mini GT collection:", error)
+      toast.error("Failed to load Mini GT collection")
+    } finally {
+      setLoading(false)
+    }
+  }, [supabase])
 
-            return {
-              id: item.id,
-              name: item.name,
-              item_no: item.item_no,
-              scale: item.scale,
-              remark: item.remark,
-              brand_name: item.tbl_master_brand?.name || "",
-              imageUrls: [
-                ...getLocalSeriesImages(item.item_no),
-                ...extractImageUrls(item.remark),
-              ],
-              purchaseCount: purchaseSummary.purchaseCount,
-              totalOwnedQuantity: purchaseSummary.totalOwnedQuantity,
-              totalSpent: purchaseSummary.totalSpent,
-            }
-          })
-          .filter((item) => item.brand_name.toLowerCase().includes("mini gt"))
+  useEffect(() => {
+    fetchMiniGtCollection()
+  }, [fetchMiniGtCollection])
 
-        setItems(formatted)
-      } catch (error) {
-        console.error("Error fetching Mini GT collection:", error)
-        toast.error("Failed to load Mini GT collection")
-      } finally {
-        setLoading(false)
-      }
+  useEffect(() => {
+    if (hasAppliedInitialOpen || loading || items.length === 0) return
+
+    const params = new URLSearchParams(window.location.search)
+    const itemNoQuery = params.get("itemNo")
+    const shouldOpen = params.get("open") === "1"
+
+    if (!itemNoQuery || !shouldOpen) {
+      setHasAppliedInitialOpen(true)
+      return
     }
 
-    fetchMiniGtCollection()
-  }, [supabase])
+    const normalizedItemNo = itemNoQuery.trim().toUpperCase()
+    const targetItem = items.find((item) => (item.item_no || "").trim().toUpperCase() === normalizedItemNo)
+
+    if (targetItem) {
+      setSelectedItem(targetItem)
+      setSelectedImageIndex(0)
+      setSearch(normalizedItemNo)
+    } else {
+      toast.info(`Mini GT model ${normalizedItemNo} not found in collection.`)
+    }
+
+    setHasAppliedInitialOpen(true)
+  }, [hasAppliedInitialOpen, items, loading])
 
   const filteredItems = useMemo(() => {
     const getSeriesSortValue = (itemNo: string | null): { prefix: string; number: number } => {
@@ -219,8 +247,21 @@ export default function MiniGtCollectionPage() {
 
       <Card>
         <CardHeader className="space-y-3">
-          <div>
+          <div className="flex items-center justify-between gap-2">
             <CardTitle>My Mini GT</CardTitle>
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              onClick={() => window.location.reload()}
+              disabled={loading}
+              aria-label="Reload Mini GT list"
+              className="h-8 w-8"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+          <div>
             <CardDescription>
               Search your owned Mini GT models and open matching catalog pages quickly.
             </CardDescription>

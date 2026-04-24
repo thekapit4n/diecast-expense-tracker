@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { EditPurchaseModal } from "./edit-purchase-modal"
+import { Link as LinkIcon } from "lucide-react"
 
 // Register AG Grid modules (Enterprise only)
 ModuleRegistry.registerModules([AllEnterpriseModule, SetFilterModule])
@@ -106,6 +107,17 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null)
   const supabase = createClient()
+
+  const isMiniGtSeries = useCallback((brandName: string | null, itemNo: string | null) => {
+    const normalizedBrand = (brandName || "").toLowerCase()
+    const normalizedItemNo = (itemNo || "").trim().toUpperCase()
+    return normalizedBrand.includes("mini gt") && /^MGT\d{5}/.test(normalizedItemNo)
+  }, [])
+
+  const openMiniGtModel = useCallback((itemNo: string) => {
+    const encodedItemNo = encodeURIComponent(itemNo.trim().toUpperCase())
+    window.location.href = `/collection/mini-gt?itemNo=${encodedItemNo}&open=1`
+  }, [])
 
   const fetchPurchases = useCallback(async () => {
     setLoading(true)
@@ -250,6 +262,35 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         defaultOption: 'contains',
         buttons: ['reset', 'apply'],
         closeOnApply: true,
+      },
+    },
+    {
+      headerName: "",
+      colId: "mini_gt_link",
+      width: 90,
+      sortable: false,
+      filter: false,
+      pinned: "right",
+      suppressHeaderMenuButton: true,
+      cellRenderer: (params: ICellRendererParams<PurchaseItem>) => {
+        const itemNo = params.data?.item_no || ""
+        const brandName = params.data?.brand_name || ""
+
+        if (!isMiniGtSeries(brandName, itemNo)) {
+          return null
+        }
+
+        return (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            aria-label="Open Mini GT collection"
+            onClick={() => openMiniGtModel(itemNo)}
+          >
+            <LinkIcon className="h-4 w-4" />
+          </Button>
+        )
       },
     },
     {
@@ -628,7 +669,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         closeOnApply: true,
       },
     },
-  ], [])
+  ], [isMiniGtSeries, openMiniGtModel])
 
   const defaultColDef = useMemo(
     () => ({
