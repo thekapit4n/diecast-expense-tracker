@@ -1,12 +1,21 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type TouchEvent as ReactTouchEvent,
+} from "react"
 import { createClient } from "@/lib/supabase/client"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, RefreshCw, Search, X } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { ChevronDown, GripHorizontal, ImagePlus, Loader2, RefreshCw, Search, X } from "lucide-react"
 import { toast } from "sonner"
 
 interface MiniGtCollectionItem {
@@ -22,6 +31,31 @@ interface MiniGtCollectionItem {
   totalSpent: number
 }
 
+interface CollectionQueryRow {
+  id: string
+  name: string
+  item_no: string | null
+  scale: string | null
+  remark: string | null
+  tbl_master_brand?: {
+    name: string
+  } | Array<{ name: string }> | null
+}
+
+interface PurchaseQueryRow {
+  collection_id: string | null
+  quantity: number | string | null
+  total_price: number | string | null
+}
+
+interface ImportPayload {
+  series: string
+  importedCount: number
+}
+
+const INITIAL_VISIBLE_ITEMS = 9
+const LOAD_MORE_BATCH = 6
+
 export default function MiniGtCollectionPage() {
   const supabase = createClient()
   const [items, setItems] = useState<MiniGtCollectionItem[]>([])
@@ -31,12 +65,26 @@ export default function MiniGtCollectionPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [isCarouselExpanded, setIsCarouselExpanded] = useState(false)
   const [failedImageUrls, setFailedImageUrls] = useState<Set<string>>(new Set())
+  const [resolvedImageUrls, setResolvedImageUrls] = useState<Set<string>>(new Set())
   const [hasAppliedInitialOpen, setHasAppliedInitialOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [importSeries, setImportSeries] = useState("")
+  const [importUrl, setImportUrl] = useState("")
+  const [isImporting, setIsImporting] = useState(false)
+  const [importModalPosition, setImportModalPosition] = useState({ x: 32, y: 88 })
+  const [isDraggingImportModal, setIsDraggingImportModal] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [visibleItemCount, setVisibleItemCount] = useState(INITIAL_VISIBLE_ITEMS)
+  const [itemImageVersionMap, setItemImageVersionMap] = useState<Record<string, number>>({})
+  const importModalRef = useRef<HTMLDivElement | null>(null)
+  const listLoadMoreRef = useRef<HTMLDivElement | null>(null)
+  const carouselTouchStartXRef = useRef<number | null>(null)
+  const carouselTouchStartYRef = useRef<number | null>(null)
 
   const extractImageUrls = (remark: string | null): string[] => {
     if (!remark) return []
 
-    const matches = remark.match(/https?:\/\/\S+\.(?:png|jpe?g|webp|gif)/gi)
+    const matches = remark.match(/(?:https?:\/\/\S+|\/api\/\S+)\.(?:png|jpe?g|webp|gif)/gi)
     return matches ? matches.map((url) => url.trim()) : []
   }
 
@@ -45,7 +93,7 @@ export default function MiniGtCollectionPage() {
 
     const normalizedSeries = itemNo.trim().toUpperCase()
     const detectedSeries = normalizedSeries.match(/MGT\d+/)?.[0] || normalizedSeries
-    return Array.from({ length: 4 }, (_, index) => `/api/mini-gt/image/${detectedSeries}/${index + 1}.jpg`)
+    return Array.from({ length: 12 }, (_, index) => `/api/mini-gt/image/${detectedSeries}/${index + 1}.jpg`)
   }
 
   const fetchMiniGtCollection = useCallback(async () => {
@@ -73,7 +121,7 @@ export default function MiniGtCollectionPage() {
 
       const purchaseSummaryMap = new Map<string, { purchaseCount: number; totalOwnedQuantity: number; totalSpent: number }>()
 
-      ;(purchaseData || []).forEach((purchase: any) => {
+      ;((purchaseData || []) as PurchaseQueryRow[]).forEach((purchase) => {
         if (!purchase.collection_id) return
 
         const existingSummary = purchaseSummaryMap.get(purchase.collection_id) || {
@@ -89,8 +137,12 @@ export default function MiniGtCollectionPage() {
         purchaseSummaryMap.set(purchase.collection_id, existingSummary)
       })
 
-      const formatted = (collectionData || [])
-        .map((item: any) => {
+      const formatted = ((collectionData || []) as CollectionQueryRow[])
+        .map((item) => {
+          const brand =
+            Array.isArray(item.tbl_master_brand)
+              ? item.tbl_master_brand[0]
+              : item.tbl_master_brand
           const purchaseSummary = purchaseSummaryMap.get(item.id) || {
             purchaseCount: 0,
             totalOwnedQuantity: 0,
@@ -103,7 +155,7 @@ export default function MiniGtCollectionPage() {
             item_no: item.item_no,
             scale: item.scale,
             remark: item.remark,
-            brand_name: item.tbl_master_brand?.name || "",
+            brand_name: brand?.name || "",
             imageUrls: [
               ...getLocalSeriesImages(item.item_no),
               ...extractImageUrls(item.remark),
@@ -199,6 +251,80 @@ export default function MiniGtCollectionPage() {
   }, [items, search])
 
   useEffect(() => {
+    setVisibleItemCount(INITIAL_VISIBLE_ITEMS)
+  }, [search, items.length])
+
+  useEffect(() => {
+    if (loading) return
+    if (visibleItemCount >= filteredItems.length) return
+
+    const target = listLoadMoreRef.current
+    if (!target) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries
+        if (!entry?.isIntersecting) return
+        setVisibleItemCount((previous) => Math.min(previous + LOAD_MORE_BATCH, filteredItems.length))
+      },
+      {
+        root: null,
+        rootMargin: "160px 0px",
+        threshold: 0.1,
+      }
+    )
+
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [filteredItems.length, loading, visibleItemCount])
+
+  const visibleItems = useMemo(
+    () => filteredItems.slice(0, Math.min(visibleItemCount, filteredItems.length)),
+    [filteredItems, visibleItemCount]
+  )
+  const hasMoreItems = visibleItemCount < filteredItems.length
+  const withCacheBuster = useCallback((url: string, itemId?: string) => {
+    if (!itemId) return url
+    const version = itemImageVersionMap[itemId]
+    if (!version) return url
+    const delimiter = url.includes("?") ? "&" : "?"
+    return `${url}${delimiter}v=${version}`
+  }, [itemImageVersionMap])
+
+  const handleCarouselTouchStart = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0]
+    if (!touch) return
+    carouselTouchStartXRef.current = touch.clientX
+    carouselTouchStartYRef.current = touch.clientY
+  }
+
+  const handleCarouselTouchEnd = (
+    event: ReactTouchEvent<HTMLDivElement>,
+    total: number,
+    selectedIndex: number,
+    updateIndex: (nextIndex: number) => void
+  ) => {
+    if (total <= 1) return
+
+    const touch = event.changedTouches[0]
+    if (!touch || carouselTouchStartXRef.current === null || carouselTouchStartYRef.current === null) return
+
+    const deltaX = touch.clientX - carouselTouchStartXRef.current
+    const deltaY = touch.clientY - carouselTouchStartYRef.current
+    const minimumSwipeDistance = 36
+
+    carouselTouchStartXRef.current = null
+    carouselTouchStartYRef.current = null
+
+    if (Math.abs(deltaX) < minimumSwipeDistance || Math.abs(deltaX) <= Math.abs(deltaY)) return
+    if (deltaX < 0) {
+      updateIndex((selectedIndex + 1 + total) % total)
+      return
+    }
+    updateIndex((selectedIndex - 1 + total) % total)
+  }
+
+  useEffect(() => {
     if (!selectedItem) {
       setIsCarouselExpanded(false)
       return
@@ -234,6 +360,228 @@ export default function MiniGtCollectionPage() {
     })
   }
 
+  const markImageAsResolved = (url: string) => {
+    setResolvedImageUrls((prev) => {
+      if (prev.has(url)) return prev
+      const next = new Set(prev)
+      next.add(url)
+      return next
+    })
+  }
+
+  const refreshSeriesItem = async (safeSeries: string) => {
+    const { data: collectionItem, error: collectionError } = await supabase
+      .from("tbl_collection")
+      .select(`
+        id,
+        name,
+        item_no,
+        scale,
+        remark,
+        tbl_master_brand(name)
+      `)
+      .ilike("item_no", `${safeSeries}%`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (collectionError) throw collectionError
+    if (!collectionItem?.id) return false
+
+    const { data: purchases, error: purchaseError } = await supabase
+      .from("tbl_purchase")
+      .select("collection_id, quantity, total_price")
+      .eq("collection_id", collectionItem.id)
+
+    if (purchaseError) throw purchaseError
+
+    const purchaseSummary = (purchases || []).reduce(
+      (summary, purchase) => {
+        summary.purchaseCount += 1
+        summary.totalOwnedQuantity += Number(purchase.quantity || 0)
+        summary.totalSpent += Number(purchase.total_price || 0)
+        return summary
+      },
+      { purchaseCount: 0, totalOwnedQuantity: 0, totalSpent: 0 }
+    )
+
+    const brand = Array.isArray(collectionItem.tbl_master_brand)
+      ? collectionItem.tbl_master_brand[0]
+      : collectionItem.tbl_master_brand
+
+    const refreshedItem: MiniGtCollectionItem = {
+      id: collectionItem.id,
+      name: collectionItem.name,
+      item_no: collectionItem.item_no,
+      scale: collectionItem.scale,
+      remark: collectionItem.remark,
+      brand_name: brand?.name || "",
+      imageUrls: [
+        ...getLocalSeriesImages(collectionItem.item_no),
+        ...extractImageUrls(collectionItem.remark),
+      ],
+      purchaseCount: purchaseSummary.purchaseCount,
+      totalOwnedQuantity: purchaseSummary.totalOwnedQuantity,
+      totalSpent: purchaseSummary.totalSpent,
+    }
+
+    setItems((prev) => prev.map((item) => (item.id === refreshedItem.id ? refreshedItem : item)))
+    setSelectedItem((prev) => (prev?.id === refreshedItem.id ? refreshedItem : prev))
+    setFailedImageUrls((prev) => {
+      const next = new Set(prev)
+      refreshedItem.imageUrls.forEach((url) => next.delete(url))
+      return next
+    })
+    setResolvedImageUrls((prev) => {
+      const next = new Set(prev)
+      refreshedItem.imageUrls.forEach((url) => next.delete(url))
+      return next
+    })
+    return true
+  }
+
+  const refreshImagePreview = async () => {
+    if (!selectedItem?.item_no) {
+      toast.info("No selected Mini GT model to refresh.")
+      return
+    }
+
+    const selectedItemId = selectedItem.id
+    const selectedItemUrls = selectedItem.imageUrls
+    setFailedImageUrls((prev) => {
+      const next = new Set(prev)
+      selectedItemUrls.forEach((url) => next.delete(url))
+      return next
+    })
+    setResolvedImageUrls((prev) => {
+      const next = new Set(prev)
+      selectedItemUrls.forEach((url) => next.delete(url))
+      return next
+    })
+    setItemImageVersionMap((prev) => ({
+      ...prev,
+      [selectedItemId]: Date.now(),
+    }))
+
+    const normalizedSeries = selectedItem.item_no.trim().toUpperCase().match(/MGT\d+/)?.[0] || selectedItem.item_no.trim().toUpperCase()
+    const hasRefreshedCard = await refreshSeriesItem(normalizedSeries)
+    if (!hasRefreshedCard) {
+      toast.error(`Unable to refresh ${normalizedSeries} card.`)
+      return
+    }
+
+    toast.success(`${normalizedSeries} images refreshed`)
+  }
+
+  const openImportModal = (presetSeries?: string | null) => {
+    const modalWidth = Math.min(window.innerWidth * 0.92, 520)
+    const modalHeight = 280
+    const centeredX = Math.max(12, (window.innerWidth - modalWidth) / 2)
+    const centeredY = Math.max(12, (window.innerHeight - modalHeight) / 2)
+    const normalizedSeries = (presetSeries || "").trim().toUpperCase().match(/MGT\d{5}/)?.[0] || ""
+    setImportSeries(normalizedSeries)
+    setImportUrl("")
+    setImportModalPosition({ x: centeredX, y: centeredY })
+    setIsImportModalOpen(true)
+  }
+
+  const closeImportModal = () => {
+    if (isImporting) return
+    setIsImportModalOpen(false)
+    setIsDraggingImportModal(false)
+  }
+
+  const getBoundedPosition = useCallback((nextX: number, nextY: number) => {
+    const modalRect = importModalRef.current?.getBoundingClientRect()
+    const modalWidth = modalRect?.width ?? 520
+    const modalHeight = modalRect?.height ?? 240
+    const maxX = Math.max(12, window.innerWidth - modalWidth - 12)
+    const maxY = Math.max(12, window.innerHeight - modalHeight - 12)
+
+    return {
+      x: Math.min(Math.max(12, nextX), maxX),
+      y: Math.min(Math.max(12, nextY), maxY),
+    }
+  }, [])
+
+  const handleDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isImportModalOpen) return
+    event.preventDefault()
+    setIsDraggingImportModal(true)
+    setDragOffset({
+      x: event.clientX - importModalPosition.x,
+      y: event.clientY - importModalPosition.y,
+    })
+  }
+
+  useEffect(() => {
+    if (!isDraggingImportModal) return
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const bounded = getBoundedPosition(event.clientX - dragOffset.x, event.clientY - dragOffset.y)
+      setImportModalPosition(bounded)
+    }
+
+    const stopDragging = () => {
+      setIsDraggingImportModal(false)
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointerup", stopDragging)
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", stopDragging)
+    }
+  }, [dragOffset.x, dragOffset.y, getBoundedPosition, isDraggingImportModal])
+
+  const handleImportSubmit = async (mode: "done" | "addNew") => {
+    const safeSeries = importSeries.trim().toUpperCase()
+    const safeUrl = importUrl.trim()
+
+    if (!safeSeries || !safeUrl) {
+      toast.error("Series and product URL are required")
+      return
+    }
+
+    setIsImporting(true)
+    try {
+      const response = await fetch("/api/management/mini-gt-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          series: safeSeries,
+          productUrl: safeUrl,
+        }),
+      })
+
+      const payload = (await response.json()) as Partial<ImportPayload> & { error?: string }
+      if (!response.ok) {
+        toast.error(payload.error || "Import failed")
+        return
+      }
+
+      toast.success(`Imported ${payload.importedCount} images for ${payload.series}`)
+      const hasRefreshedCard = await refreshSeriesItem(safeSeries)
+      if (!hasRefreshedCard) {
+        await fetchMiniGtCollection()
+      }
+
+      if (mode === "addNew") {
+        setImportSeries("")
+        setImportUrl("")
+        return
+      }
+
+      setIsImportModalOpen(false)
+    } catch (error) {
+      console.error("Image import failed:", error)
+      toast.error("Unexpected import error")
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageBreadcrumb />
@@ -249,22 +597,40 @@ export default function MiniGtCollectionPage() {
         <CardHeader className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <CardTitle>My Mini GT</CardTitle>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              onClick={() => window.location.reload()}
-              disabled={loading}
-              aria-label="Reload Mini GT list"
-              className="h-8 w-8"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={() => openImportModal()}
+                disabled={isImporting}
+                aria-label="Open Mini GT image import"
+                className="h-8 w-8"
+              >
+                {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                onClick={() => fetchMiniGtCollection()}
+                disabled={loading}
+                aria-label="Reload Mini GT list"
+                className="h-8 w-8"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
           </div>
           <div>
             <CardDescription>
               Search your owned Mini GT models and open matching catalog pages quickly.
             </CardDescription>
+            {!loading ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Showing {Math.min(visibleItems.length, filteredItems.length)} of {filteredItems.length} item(s).
+              </p>
+            ) : null}
           </div>
           <div className="relative max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -292,8 +658,9 @@ export default function MiniGtCollectionPage() {
               No Mini GT model found in your collection yet.
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredItems.map((item) => {
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleItems.map((item) => {
                 const availableItemImageUrls = item.imageUrls.filter((url) => !failedImageUrls.has(url))
                 return (
                   <Card key={item.id} className="overflow-hidden">
@@ -307,17 +674,25 @@ export default function MiniGtCollectionPage() {
                         className="group relative block w-full border-b bg-white"
                       >
                         {availableItemImageUrls.length > 0 ? (
-                          <div className="aspect-[4/3] w-full overflow-hidden">
+                          <div className="relative aspect-[4/3] w-full overflow-hidden">
+                            {!resolvedImageUrls.has(availableItemImageUrls[0]) ? (
+                              <div className="absolute inset-0 animate-pulse bg-muted" />
+                            ) : null}
                             <img
-                              src={availableItemImageUrls[0]}
+                              src={withCacheBuster(availableItemImageUrls[0], item.id)}
                               alt={`${item.name} thumbnail`}
                               className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"
-                              onError={() => markImageAsFailed(availableItemImageUrls[0])}
+                              onLoad={() => markImageAsResolved(availableItemImageUrls[0])}
+                              onError={() => {
+                                markImageAsResolved(availableItemImageUrls[0])
+                                markImageAsFailed(availableItemImageUrls[0])
+                              }}
                             />
                           </div>
                         ) : (
-                          <div className="flex aspect-[4/3] w-full items-center justify-center bg-muted/30">
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          <div className="relative flex aspect-[4/3] w-full items-center justify-center bg-muted/30">
+                            <div className="absolute inset-0 animate-pulse bg-muted/40" />
+                            <p className="relative text-xs uppercase tracking-wide text-muted-foreground">
                               No image yet
                             </p>
                           </div>
@@ -325,23 +700,148 @@ export default function MiniGtCollectionPage() {
                       </button>
                       <div className="space-y-1 p-3">
                         <h3 className="text-sm font-semibold leading-snug line-clamp-2">{item.name}</h3>
-                        <p className="text-xs text-muted-foreground">
-                          {item.item_no || "No Item No"}{item.scale ? ` • ${item.scale}` : ""}
-                        </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            {item.item_no || "No Item No"}{item.scale ? ` • ${item.scale}` : ""}
+                          </p>
+                          {availableItemImageUrls.length === 0 ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={() => openImportModal(item.item_no)}
+                            >
+                              <ImagePlus className="mr-1 h-3 w-3" />
+                              Import Image
+                            </Button>
+                          ) : null}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
                 )
-              })}
-            </div>
+                })}
+              </div>
+              {hasMoreItems ? (
+                <div className="mt-4 space-y-3">
+                  <div ref={listLoadMoreRef} className="h-1 w-full" />
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: Math.min(LOAD_MORE_BATCH, filteredItems.length - visibleItems.length) }).map((_, index) => (
+                      <div key={`mini-gt-load-more-${index}`} className="rounded-lg border p-4 space-y-3">
+                        <div className="h-32 w-full rounded-md bg-muted animate-pulse" />
+                        <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+                        <div className="h-3 w-1/2 rounded bg-muted animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Loading more... ({visibleItems.length}/{filteredItems.length})
+                  </p>
+                </div>
+              ) : null}
+            </>
           )}
         </CardContent>
       </Card>
 
+      {!loading && filteredItems.length > 0 ? (
+        <div className="fixed bottom-4 right-4 z-30 rounded-full border bg-background/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur-sm">
+          Showing {Math.min(visibleItems.length, filteredItems.length)} / {filteredItems.length}
+          {hasMoreItems ? " (scroll for more)" : ""}
+        </div>
+      ) : null}
+
+      {isImportModalOpen ? (
+        <div
+          ref={importModalRef}
+          className="fixed z-40 w-[min(92vw,520px)] rounded-xl border bg-background shadow-2xl"
+          style={{
+            left: importModalPosition.x,
+            top: importModalPosition.y,
+          }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div
+            onPointerDown={handleDragStart}
+            className={`flex cursor-move items-center justify-between rounded-t-xl border-b px-4 py-3 ${isDraggingImportModal ? "select-none" : ""}`}
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <GripHorizontal className="h-4 w-4 text-muted-foreground" />
+              Import Mini GT Images
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={closeImportModal}
+              disabled={isImporting}
+              aria-label="Close import modal"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="space-y-4 p-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Series</label>
+              <Input
+                value={importSeries}
+                onChange={(event) => setImportSeries(event.target.value.toUpperCase())}
+                placeholder="MGT00009"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Product URL</label>
+              <Input
+                value={importUrl}
+                onChange={(event) => setImportUrl(event.target.value)}
+                placeholder="https://minigt.tsm-models.com/index.php?action=product-detail&id=9"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={closeImportModal} disabled={isImporting}>
+                Cancel
+              </Button>
+              <div className="flex items-center">
+                <Button type="button" onClick={() => handleImportSubmit("done")} disabled={isImporting}>
+                  {isImporting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    "Import + Done"
+                  )}
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="icon"
+                      className="ml-1 h-10 w-10"
+                      disabled={isImporting}
+                      aria-label="Select import action"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => handleImportSubmit("addNew")}>
+                      Import + Add New
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {selectedItem ? (() => {
         const urls = selectedItem.imageUrls.filter((url) => !failedImageUrls.has(url))
         const total = urls.length
-        const seriesNum = selectedItem.item_no?.replace(/^[A-Z]+0*/i, "") || ""
         const getWrappedIndex = (index: number) => {
           if (total === 0) return 0
           return (index + total) % total
@@ -370,6 +870,10 @@ export default function MiniGtCollectionPage() {
               <div
                 className="relative flex h-[320px] items-center justify-center overflow-hidden md:h-[420px]"
                 style={{ perspective: "1200px" }}
+                onTouchStart={handleCarouselTouchStart}
+                onTouchEnd={(event) =>
+                  handleCarouselTouchEnd(event, total, selectedImageIndex, (nextIndex) => setSelectedImageIndex(nextIndex))
+                }
               >
                 {total > 0 ? (
                   urls.map((url, imageIndex) => {
@@ -423,7 +927,7 @@ export default function MiniGtCollectionPage() {
                           }}
                         >
                           <img
-                            src={url}
+                            src={withCacheBuster(url, selectedItem.id)}
                             alt={`${selectedItem.name} preview ${imageIndex + 1}`}
                             className="aspect-[4/3] w-full object-contain"
                             onError={() => markImageAsFailed(url)}
@@ -443,23 +947,11 @@ export default function MiniGtCollectionPage() {
                         }}
                       >
                         <img
-                          src={url}
+                          src={withCacheBuster(url, selectedItem.id)}
                           alt={`${selectedItem.name} preview ${imageIndex + 1}`}
                           className="aspect-[4/3] w-full object-contain"
                           onError={() => markImageAsFailed(url)}
                         />
-                        {isCenter ? (
-                          <>
-                            <div className="absolute bottom-2 left-2 flex items-center gap-1 text-xs font-bold text-gray-700">
-                              <span className="text-red-600">▶</span>
-                              {seriesNum}
-                            </div>
-                            <div className="absolute bottom-2 right-2 text-right leading-tight">
-                              <p className="text-[10px] font-bold tracking-tight text-gray-700">MINI GT</p>
-                              <p className="text-[9px] text-gray-400">LHD version shown</p>
-                            </div>
-                          </>
-                        ) : null}
                       </div>
                     )
                   })
@@ -492,10 +984,23 @@ export default function MiniGtCollectionPage() {
               {/* Model info */}
               <div className="space-y-1 px-6 py-5 text-center">
                 <h2 className="text-2xl font-bold leading-tight md:text-3xl">{selectedItem.name}</h2>
-                <p className="text-base text-muted-foreground">
-                  {selectedItem.item_no || "No Item No"}
-                  {selectedItem.scale ? ` • ${selectedItem.scale}` : ""}
-                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <p className="text-base text-muted-foreground">
+                    {selectedItem.item_no || "No Item No"}
+                    {selectedItem.scale ? ` • ${selectedItem.scale}` : ""}
+                  </p>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={refreshImagePreview}
+                    disabled={loading}
+                    aria-label="Refresh current model images"
+                    className="h-7 w-7"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                  </Button>
+                </div>
               </div>
 
               {/* Collection summary info */}

@@ -12,6 +12,12 @@ const STORAGE_BRAND_PREFIX = "mini-gt"
 const IMPORT_RATE_LIMIT_WINDOW_MS = 60 * 1000
 const IMPORT_RATE_LIMIT_MAX = 5
 const importRateLimitMap = new Map<string, number[]>()
+const ACCEPTED_IMAGE_PATH_PATTERNS = [
+  "/upload/mini_gt/products_gif/product_pic_big/",
+  "/upload/picfile/",
+  "/upload/picfile_list/",
+  "/upload/mini_gt/products_gif/product_pic_list/",
+]
 
 function sanitizeSeries(series: string): string | null {
   const normalized = series.trim().toUpperCase()
@@ -51,6 +57,61 @@ function getSafeExtensionFromUrl(imageUrl: string): string {
 
 function getStoragePath(series: string, fileName: string): string {
   return `${STORAGE_BRAND_PREFIX}/${series}/${fileName}`
+}
+
+function isAcceptedImagePath(imageUrl: string): boolean {
+  const pathname = new URL(imageUrl).pathname.toLowerCase()
+  return ACCEPTED_IMAGE_PATH_PATTERNS.some((pattern) => pathname.includes(pattern))
+}
+
+function getImagePathPriority(imageUrl: string): number {
+  const pathname = new URL(imageUrl).pathname.toLowerCase()
+  if (pathname.includes("/upload/picfile/")) return 0
+  if (pathname.includes("/upload/mini_gt/products_gif/product_pic_big/")) return 1
+  if (pathname.includes("/upload/picfile_list/")) return 2
+  if (pathname.includes("/upload/mini_gt/products_gif/product_pic_list/")) return 3
+  return 99
+}
+
+function createOrderedImageCandidates(urls: string[]) {
+  const firstSeenOrder = new Map<string, number>()
+  urls.forEach((url, index) => {
+    if (!firstSeenOrder.has(url)) {
+      firstSeenOrder.set(url, index)
+    }
+  })
+
+  return Array.from(firstSeenOrder.entries())
+    .map(([url, index]) => ({
+      url,
+      index,
+      priority: getImagePathPriority(url),
+    }))
+    .sort((a, b) => {
+      const priorityDiff = a.priority - b.priority
+      if (priorityDiff !== 0) return priorityDiff
+      return a.index - b.index
+    })
+    .map((entry) => entry.url)
+}
+
+function extractPrimaryProductSection(html: string): string {
+  const sectionCutMarkers = [
+    "<h5>Related Products</h5>",
+    "class=\"related_pro",
+    "<!-- 相關產品 -->",
+  ]
+
+  const firstCutIndex = sectionCutMarkers
+    .map((marker) => html.indexOf(marker))
+    .filter((index) => index >= 0)
+    .reduce<number | null>((earliest, index) => {
+      if (earliest === null) return index
+      return Math.min(earliest, index)
+    }, null)
+
+  if (firstCutIndex === null) return html
+  return html.slice(0, firstCutIndex)
 }
 
 export async function POST(request: NextRequest) {
@@ -112,24 +173,34 @@ export async function POST(request: NextRequest) {
     }
 
     const html = await productResponse.text()
-    const srcMatches = [...html.matchAll(/src="([^"]+)"/gi)]
+    const primaryHtml = extractPrimaryProductSection(html)
+
+    const srcMatches = [...primaryHtml.matchAll(/src=["']([^"']+)["']/gi)]
     const srcBasedUrls = srcMatches
       .map((match) => match[1])
       .map(resolveImageUrl)
       .filter((url): url is string => !!url)
-      .filter((url) => url.includes("/upload/mini_gt/products_gif/product_pic_big/"))
+      .filter(isAcceptedImagePath)
 
-    const directHighQualityMatches = [
-      ...html.matchAll(
-        /https:\/\/minigt\.tsm-models\.com\/upload\/mini_gt\/products_gif\/product_pic_big\/[^\s"'?#]+\.(?:png|jpe?g|webp)/gi
-      ),
+    const directAbsoluteMatches = [
+      ...primaryHtml.matchAll(
+        /https:\/\/minigt\.tsm-models\.com\/upload\/[^\s"'?#]+\.(?:png|jpe?g|webp)/gi
+      )
     ]
-    const directHighQualityUrls = directHighQualityMatches
-      .map((match) => match[0])
+    const directRelativeMatches = [
+      ...primaryHtml.matchAll(
+        /(?:^|["'\s])(upload\/[^\s"'?#]+\.(?:png|jpe?g|webp))(?:$|["'\s])/gi
+      )
+    ]
+    const directPatternUrls = [...directAbsoluteMatches, ...directRelativeMatches]
+      .map((match) => match[1] || match[0])
       .map(resolveImageUrl)
       .filter((url): url is string => !!url)
+      .filter(isAcceptedImagePath)
 
-    const uniqueImageUrls = [...new Set([...srcBasedUrls, ...directHighQualityUrls])].slice(0, MAX_IMAGES)
+    const prioritizedImageUrls = createOrderedImageCandidates([...srcBasedUrls, ...directPatternUrls]).slice(0, MAX_IMAGES)
+
+    const uniqueImageUrls = prioritizedImageUrls
     if (uniqueImageUrls.length === 0) {
       return NextResponse.json({ error: "No valid product images found" }, { status: 404 })
     }
