@@ -55,6 +55,7 @@ interface ImportPayload {
 
 const INITIAL_VISIBLE_ITEMS = 9
 const LOAD_MORE_BATCH = 6
+const DEFAULT_LOCAL_IMAGE_SLOTS = 5
 
 export default function MiniGtCollectionPage() {
   const supabase = createClient()
@@ -93,7 +94,7 @@ export default function MiniGtCollectionPage() {
 
     const normalizedSeries = itemNo.trim().toUpperCase()
     const detectedSeries = normalizedSeries.match(/MGT\d+/)?.[0] || normalizedSeries
-    return Array.from({ length: 12 }, (_, index) => `/api/mini-gt/image/${detectedSeries}/${index + 1}.jpg`)
+    return Array.from({ length: DEFAULT_LOCAL_IMAGE_SLOTS }, (_, index) => `/api/mini-gt/image/${detectedSeries}/${index + 1}.jpg`)
   }
 
   const fetchMiniGtCollection = useCallback(async () => {
