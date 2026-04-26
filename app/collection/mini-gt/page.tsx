@@ -840,7 +840,7 @@ export default function MiniGtCollectionPage() {
       ) : null}
 
       {selectedItem ? (() => {
-        const urls = selectedItem.imageUrls.filter((url) => !failedImageUrls.has(url))
+        const urls = Array.from(new Set(selectedItem.imageUrls.filter((url) => !failedImageUrls.has(url))))
         const total = urls.length
         const getWrappedIndex = (index: number) => {
           if (total === 0) return 0
