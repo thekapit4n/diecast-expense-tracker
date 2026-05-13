@@ -332,7 +332,6 @@ export default function AddPurchasePage() {
     }
 
     if (!miniGtProductUrl.trim()) {
-      toast.error("Product URL is required")
       return
     }
 
@@ -436,11 +435,6 @@ export default function AddPurchasePage() {
   const onSubmit = async (data: PurchaseFormValues) => {
     setIsSubmitting(true)
     try {
-      if (isMiniGtBrand && miniGtSeries && !hasMiniGtImage && !miniGtProductUrl.trim()) {
-        toast.error("Mini GT image not found yet. Please enter Product URL to auto-import during Add.")
-        return
-      }
-
       if (isMiniGtBrand && miniGtSeries && !hasMiniGtImage && miniGtProductUrl.trim()) {
         const importResponse = await fetch("/api/management/mini-gt-import", {
           method: "POST",
@@ -765,7 +759,7 @@ export default function AddPurchasePage() {
                       <div className="space-y-1">
                         <p className="text-sm font-semibold">Mini GT Image Import</p>
                         <p className="text-xs text-muted-foreground">
-                          Series is detected from Item Number. If image does not exist yet, it will auto-import when you click Add Purchase.
+                          Series is detected from Item Number. If no image exists yet, you can paste an optional product URL to import (now or when you add the purchase). Leave the URL empty to skip import.
                         </p>
                         {miniGtSeries ? (
                           <p className="text-xs text-muted-foreground">Detected series: {miniGtSeries}</p>
@@ -795,7 +789,8 @@ export default function AddPurchasePage() {
                             hasMiniGtImage ||
                             isImportingMiniGtImage ||
                             isCheckingMiniGtImage ||
-                            !miniGtSeries
+                            !miniGtSeries ||
+                            !miniGtProductUrl.trim()
                           }
                         >
                           {isImportingMiniGtImage ? "Importing..." : "Import Now (Optional)"}
