@@ -1,8 +1,18 @@
 "use client"
 
-import { useEffect, useState, forwardRef, useImperativeHandle, useMemo, useCallback } from "react"
+import { useEffect, useState, forwardRef, useImperativeHandle, useMemo, useCallback, useRef } from "react"
 import { AgGridReact } from "ag-grid-react"
-import { ColDef, ModuleRegistry, ICellRendererParams, GetContextMenuItemsParams, FirstDataRenderedEvent } from "ag-grid-community"
+import {
+  ColDef,
+  ModuleRegistry,
+  ICellRendererParams,
+  GetContextMenuItemsParams,
+  FirstDataRenderedEvent,
+  GridApi,
+  ColumnState,
+  FilterModel,
+  RowDataUpdatedEvent,
+} from "ag-grid-community"
 import { AllEnterpriseModule, SetFilterModule } from "ag-grid-enterprise"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -100,12 +110,21 @@ export interface PurchaseGridRef {
   reload: () => void
 }
 
+type SavedGridState = {
+  filterModel: FilterModel
+  columnState: ColumnState[]
+  paginationPage: number
+}
+
 export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
   const [purchases, setPurchases] = useState<PurchaseItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null)
+  const gridApiRef = useRef<GridApi<PurchaseItem> | null>(null)
+  const savedGridStateRef = useRef<SavedGridState | null>(null)
   const supabase = createClient()
 
   const isMiniGtSeries = useCallback((brandName: string | null, itemNo: string | null) => {
@@ -119,8 +138,34 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
     window.location.href = `/collection/mini-gt?itemNo=${encodedItemNo}&open=1`
   }, [])
 
-  const fetchPurchases = useCallback(async () => {
-    setLoading(true)
+  const restoreGridState = useCallback(() => {
+    const api = gridApiRef.current
+    const saved = savedGridStateRef.current
+    if (!api || !saved) return
+
+    api.setFilterModel(saved.filterModel)
+    api.applyColumnState({ state: saved.columnState, applyOrder: true })
+    if (saved.paginationPage > 0) {
+      api.paginationGoToPage(saved.paginationPage)
+    }
+    savedGridStateRef.current = null
+  }, [])
+
+  const fetchPurchases = useCallback(async (options?: { keepFilters?: boolean }) => {
+    const api = gridApiRef.current
+    const keepFilters = options?.keepFilters === true && api != null
+
+    if (keepFilters) {
+      savedGridStateRef.current = {
+        filterModel: api.getFilterModel(),
+        columnState: api.getColumnState(),
+        paginationPage: api.paginationGetCurrentPage(),
+      }
+      setIsRefreshing(true)
+    } else {
+      setInitialLoading(true)
+    }
+
     setError(null)
     try {
       const { data, error } = await supabase
@@ -201,18 +246,25 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
       })
 
       setPurchases(sortedData)
+
+      /* Restore filters after row data is applied (onRowDataUpdated also handles this). */
+      if (keepFilters) {
+        requestAnimationFrame(() => restoreGridState())
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch purchases'
       setError(errorMessage)
       toast.error(`Error loading purchases: ${errorMessage}`)
       console.error('Error fetching purchases:', err)
+      savedGridStateRef.current = null
     } finally {
-      setLoading(false)
+      setInitialLoading(false)
+      setIsRefreshing(false)
     }
-  }, [supabase])
+  }, [supabase, restoreGridState])
 
   const reload = useCallback(() => {
-    fetchPurchases()
+    fetchPurchases({ keepFilters: true })
   }, [fetchPurchases])
 
   useEffect(() => {
@@ -713,11 +765,24 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
     reload()
   }, [reload])
 
+  const handleGridReady = useCallback((api: GridApi<PurchaseItem>) => {
+    gridApiRef.current = api
+  }, [])
+
+  const handleRowDataUpdated = useCallback(
+    (_event: RowDataUpdatedEvent<PurchaseItem>) => {
+      if (savedGridStateRef.current) {
+        restoreGridState()
+      }
+    },
+    [restoreGridState]
+  )
+
   const handleFirstDataRendered = useCallback((event: FirstDataRenderedEvent<PurchaseItem>) => {
     event.api.autoSizeColumns(["collection_name", "item_no", "brand_name"])
   }, [])
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
         <div className="text-center">
@@ -743,9 +808,13 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
 
   return (
     <>
-      <div className="ag-theme-quartz w-full h-[calc(100vh-12rem)]">
-        {loading ? null : (
-          <AgGridReact<PurchaseItem>
+      <div className="relative ag-theme-quartz w-full h-[calc(100vh-12rem)]">
+        {isRefreshing && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100" />
+          </div>
+        )}
+        <AgGridReact<PurchaseItem>
             theme="legacy"
             rowData={purchases}
             columnDefs={columnDefs}
@@ -759,10 +828,11 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
               enableClickSelection: true,
             }}
             domLayout="normal"
-            onFirstDataRendered={handleFirstDataRendered}
-            getContextMenuItems={getContextMenuItems as any}
-          />
-        )}
+          onGridReady={(event) => handleGridReady(event.api)}
+          onRowDataUpdated={handleRowDataUpdated}
+          onFirstDataRendered={handleFirstDataRendered}
+          getContextMenuItems={getContextMenuItems as any}
+        />
       </div>
 
       {/* Edit Purchase Modal */}
