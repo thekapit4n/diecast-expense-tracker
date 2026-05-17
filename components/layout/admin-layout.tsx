@@ -12,10 +12,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     setIsCollapsed(!isCollapsed)
   }
 
-  // Don't show sidebar on login page
+  // Don't show sidebar on login page or the catalog page (full-screen mobile experience)
   const isLoginPage = pathname === '/login'
+  const isCatalogPage = pathname.startsWith('/catalog')
 
-  if (isLoginPage) {
+  if (isLoginPage || isCatalogPage) {
     return <>{children}</>
   }
 
