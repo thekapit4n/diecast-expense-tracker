@@ -6,6 +6,7 @@ import { ColDef, ModuleRegistry, FirstDataRenderedEvent } from "ag-grid-communit
 import { AllEnterpriseModule, SetFilterModule } from "ag-grid-enterprise"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
+import { AgGridPanel } from "@/components/ag-grid/ag-grid-panel"
 import { Button } from "@/components/ui/button"
 import { Link as LinkIcon } from "lucide-react"
 
@@ -270,24 +271,27 @@ export function CollectionGrid() {
   }
 
   return (
-    <div className="ag-theme-quartz w-full h-[calc(100vh-12rem)]">
-      <AgGridReact<CollectionItem>
-        theme="legacy"
-        rowData={collections}
-        columnDefs={columnDefs}
-        defaultColDef={defaultColDef}
-        pagination={true}
-        paginationPageSize={100}
-        paginationPageSizeSelector={[10, 20, 50, 100]}
-        animateRows={true}
-        rowSelection={{
-          mode: "singleRow",
-          enableClickSelection: true,
-        }}
-        domLayout="normal"
-        onFirstDataRendered={handleFirstDataRendered}
-      />
-    </div>
+    <AgGridPanel>
+      {(popupParent) => (
+        <AgGridReact<CollectionItem>
+          theme="legacy"
+          rowData={collections}
+          columnDefs={columnDefs}
+          defaultColDef={defaultColDef}
+          pagination={true}
+          paginationPageSize={100}
+          paginationPageSizeSelector={[10, 20, 50, 100]}
+          animateRows={true}
+          rowSelection={{
+            mode: "singleRow",
+            enableClickSelection: true,
+          }}
+          domLayout="normal"
+          popupParent={popupParent}
+          onFirstDataRendered={handleFirstDataRendered}
+        />
+      )}
+    </AgGridPanel>
   )
 }
 

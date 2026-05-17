@@ -2,6 +2,7 @@ export const STORAGE_BUCKET = process.env.SUPABASE_IMAGE_BUCKET || "diecast-imag
 export const MAX_UPLOAD_IMAGES = 12
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024
 export const MIN_UPLOAD_IMAGE_BYTES = 1024
+export const DEFAULT_CATALOG_IMAGE_SLOTS = 5
 
 const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"] as const
 
@@ -97,6 +98,32 @@ export function getStoragePath(brandSlug: string, folderKey: string, fileName: s
 export function buildCatalogImageUrl(brandSlug: string, folderKey: string, fileName: string): string {
   const safeFolderKey = brandSlug === "mini-gt" ? folderKey.toUpperCase() : folderKey
   return `/api/catalog/image/${brandSlug}/${safeFolderKey}/${fileName.toLowerCase()}`
+}
+
+/**
+ * Probable catalog image URLs from Supabase storage layout (item no or model name folder).
+ */
+export function getBrandStorageImageUrls(
+  brandName: string,
+  itemNo: string | null,
+  collectionName: string | null,
+  maxSlots: number = DEFAULT_CATALOG_IMAGE_SLOTS
+): string[] {
+  const resolved = resolveFolderKey({
+    itemNo,
+    collectionName,
+    brandName,
+  })
+  if (!resolved) return []
+
+  const brandSlug = getBrandStorageSlug(brandName)
+  return Array.from({ length: maxSlots }, (_, index) =>
+    buildCatalogImageUrl(brandSlug, resolved.folderKey, `${index + 1}.jpg`)
+  )
+}
+
+export function mergeCatalogImageUrls(...groups: string[][]): string[] {
+  return [...new Set(groups.flat())]
 }
 
 export function getMimeType(fileName: string): string {

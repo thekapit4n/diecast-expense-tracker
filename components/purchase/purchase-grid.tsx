@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, forwardRef, useImperativeHandle, useMemo, useCallback, useRef } from "react"
+import { AgGridPanel } from "@/components/ag-grid/ag-grid-panel"
 import { AgGridReact } from "ag-grid-react"
 import {
   ColDef,
@@ -809,7 +810,9 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
 
   return (
     <>
-      <div className="relative ag-theme-quartz w-full h-[calc(100vh-12rem)]">
+      <AgGridPanel className="relative">
+        {(popupParent) => (
+          <>
         {isRefreshing && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100" />
@@ -829,12 +832,15 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
               enableClickSelection: true,
             }}
             domLayout="normal"
+            popupParent={popupParent}
           onGridReady={(event) => handleGridReady(event.api)}
           onRowDataUpdated={handleRowDataUpdated}
           onFirstDataRendered={handleFirstDataRendered}
           getContextMenuItems={getContextMenuItems as any}
         />
-      </div>
+          </>
+        )}
+      </AgGridPanel>
 
       {/* Edit Purchase Modal */}
       {selectedPurchaseId && (

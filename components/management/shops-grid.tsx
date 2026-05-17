@@ -8,6 +8,7 @@ import {
   forwardRef,
   useEffect,
 } from "react"
+import { AgGridPanel } from "@/components/ag-grid/ag-grid-panel"
 import { AgGridReact } from "ag-grid-react"
 import { ColDef, ICellRendererParams } from "ag-grid-community"
 import { ModuleRegistry } from "ag-grid-community"
@@ -255,22 +256,22 @@ export const ShopsGrid = forwardRef<ShopsGridRef, ShopsGridProps>(
 
     return (
       <>
-        <div
-          className="ag-theme-quartz w-full h-[calc(100vh-12rem)]"
-          key={reloadKey}
-        >
-          <AgGridReact<ShopItem>
-            theme="legacy"
-            rowData={shops}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            pagination
-            paginationPageSize={100}
-            paginationPageSizeSelector={[10, 20, 50, 100]}
-            animateRows
-            domLayout="normal"
-          />
-        </div>
+        <AgGridPanel key={reloadKey}>
+          {(popupParent) => (
+            <AgGridReact<ShopItem>
+              theme="legacy"
+              rowData={shops}
+              columnDefs={columnDefs}
+              defaultColDef={defaultColDef}
+              pagination
+              paginationPageSize={100}
+              paginationPageSizeSelector={[10, 20, 50, 100]}
+              animateRows
+              domLayout="normal"
+              popupParent={popupParent}
+            />
+          )}
+        </AgGridPanel>
         <AlertDialog
           open={deleteDialogOpen}
           onOpenChange={(open) => {

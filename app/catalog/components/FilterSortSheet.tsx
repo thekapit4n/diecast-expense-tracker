@@ -64,6 +64,10 @@ export default function FilterSortSheet({
 }: FilterSortSheetProps) {
   const [draft, setDraft] = useState<FilterState>(filters)
 
+  function selectAllBrands() {
+    setDraft((prev) => ({ ...prev, brands: [] }))
+  }
+
   function toggleBrand(name: string) {
     setDraft((prev) => ({
       ...prev,
@@ -129,6 +133,9 @@ export default function FilterSortSheet({
           <div className="px-5 pt-5">
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Brand</p>
             <div className="flex flex-wrap gap-2">
+              <PillButton active={draft.brands.length === 0} onClick={selectAllBrands}>
+                All
+              </PillButton>
               {brands.map((brand) => (
                 <PillButton
                   key={brand.id}

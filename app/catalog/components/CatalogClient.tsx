@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Search, SlidersHorizontal, X, Menu } from "lucide-react"
+import { Loader2, Menu, RefreshCw, Search, SlidersHorizontal, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { colors, tw } from "@/lib/theme/diecast-theme"
 import { AppNavSheet } from "@/components/navigation/app-nav-sheet"
@@ -29,10 +30,19 @@ function isMiniGTBrand(brand: string | null): boolean {
   return brand?.trim().toLowerCase() === "mini gt"
 }
 
+function resolveSortForBrands(
+  brands: string[],
+  sort: FilterState["sort"]
+): FilterState["sort"] {
+  if (brands.length > 0 && brands.every((brand) => isMiniGTBrand(brand))) {
+    return sort === "name_desc" ? "name_desc" : "series_asc"
+  }
+  return sort === "series_asc" ? "name_asc" : sort
+}
+
 /** Always returns a new sorted array — never mutates the input. */
 function sortCatalogItems(
   list: CatalogItem[],
-  selectedBrand: string | null,
   filterBrands: string[],
   userSort: FilterState["sort"]
 ): CatalogItem[] {
@@ -51,8 +61,7 @@ function sortCatalogItems(
   }
 
   const viewingMiniGT =
-    isMiniGTBrand(selectedBrand) ||
-    (filterBrands.length === 1 && isMiniGTBrand(filterBrands[0]))
+    filterBrands.length > 0 && filterBrands.every((brand) => isMiniGTBrand(brand))
 
   /* Non–Mini GT brands: always sort by name (ignore series_asc / stale sort values). */
   if (!viewingMiniGT) {
@@ -79,15 +88,16 @@ export default function CatalogClient({
   defaultBrand,
   initialSearch = "",
 }: CatalogClientProps) {
+  const router = useRouter()
+  const [isReloading, startReload] = useTransition()
   const [search, setSearch] = useState(initialSearch)
-  const [selectedBrand, setSelectedBrand] = useState<string | null>(defaultBrand)
   const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null)
   const [filterOpen, setFilterOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE)
   const [filters, setFilters] = useState<FilterState>({
-    brands: [],
+    brands: defaultBrand ? [defaultBrand] : [],
     scales: [],
     sort: isMiniGTBrand(defaultBrand) ? "series_asc" : "name_asc",
   })
@@ -102,13 +112,15 @@ export default function CatalogClient({
     }
   }, [initialSearch])
 
-  /* Keep sort in sync when brand tab changes (covers any code path that updates selectedBrand). */
+  /* Keep open detail sheet in sync after server refresh */
   useEffect(() => {
-    const expected: FilterState["sort"] = isMiniGTBrand(selectedBrand)
-      ? "series_asc"
-      : "name_asc"
-    setFilters((prev) => (prev.sort === expected ? prev : { ...prev, sort: expected }))
-  }, [selectedBrand])
+    const selectedId = selectedItem?.id
+    if (!selectedId) return
+    const updated = items.find((entry) => entry.id === selectedId)
+    if (updated) {
+      setSelectedItem(updated)
+    }
+  }, [items, selectedItem?.id])
 
   const scales = useMemo(() => {
     const set = new Set<string>()
@@ -122,9 +134,6 @@ export default function CatalogClient({
   const filtered = useMemo(() => {
     let list = [...items]
 
-    if (selectedBrand) {
-      list = list.filter((i) => i.brand_name.toLowerCase() === selectedBrand.toLowerCase())
-    }
     if (filters.brands.length > 0) {
       list = list.filter((i) =>
         filters.brands.some((b) => i.brand_name.toLowerCase() === b.toLowerCase())
@@ -144,8 +153,8 @@ export default function CatalogClient({
       )
     }
 
-    return sortCatalogItems(list, selectedBrand, filters.brands, filters.sort)
-  }, [items, selectedBrand, filters, search])
+    return sortCatalogItems(list, filters.brands, filters.sort)
+  }, [items, filters, search])
 
   const visible = filtered.slice(0, visibleCount)
   const hasMore = visibleCount < filtered.length
@@ -168,22 +177,31 @@ export default function CatalogClient({
     return () => observer.disconnect()
   }, [hasMore])
 
-  /* Reset visible count + apply sensible default sort when brand tab changes */
-  function handleBrandChange(brand: string | null) {
-    setSelectedBrand(brand)
+  function handleBrandTabsChange(brands: string[]) {
     setVisibleCount(INITIAL_VISIBLE)
     setFilters((prev) => ({
       ...prev,
-      sort: isMiniGTBrand(brand) ? "series_asc" : "name_asc",
+      brands,
+      sort: resolveSortForBrands(brands, prev.sort),
     }))
   }
+
   function handleFiltersChange(next: FilterState) {
-    setFilters(next)
     setVisibleCount(INITIAL_VISIBLE)
+    setFilters({
+      ...next,
+      sort: resolveSortForBrands(next.brands, next.sort),
+    })
   }
   function handleSearchChange(value: string) {
     setSearch(value)
     setVisibleCount(INITIAL_VISIBLE)
+  }
+
+  function handleReload() {
+    startReload(() => {
+      router.refresh()
+    })
   }
 
   return (
@@ -239,6 +257,20 @@ export default function CatalogClient({
             <div className="flex items-center gap-0.5">
               <button
                 type="button"
+                onClick={handleReload}
+                disabled={isReloading}
+                className="rounded-full p-2 text-muted-foreground transition hover:bg-card hover:text-foreground disabled:opacity-50"
+                aria-label="Reload catalog"
+                title="Reload catalog"
+              >
+                {isReloading ? (
+                  <Loader2 className="h-[18px] w-[18px] animate-spin" />
+                ) : (
+                  <RefreshCw className="h-[18px] w-[18px]" />
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={() => setSearchOpen(true)}
                 className="rounded-full p-2 text-muted-foreground transition hover:bg-card hover:text-foreground"
               >
@@ -267,7 +299,11 @@ export default function CatalogClient({
         </div>
 
         <div className="pb-3 pt-0.5">
-          <BrandTabs brands={brands} selected={selectedBrand} onChange={handleBrandChange} />
+          <BrandTabs
+            brands={brands}
+            selectedBrands={filters.brands}
+            onChange={handleBrandTabsChange}
+          />
         </div>
       </header>
 
@@ -281,13 +317,12 @@ export default function CatalogClient({
             </span>
           )}
         </p>
-        {(activeFilterCount > 0 || search || selectedBrand) && (
+        {(activeFilterCount > 0 || search || filters.brands.length > 0) && (
           <button
             type="button"
             onClick={() => {
               handleFiltersChange({ brands: [], scales: [], sort: "name_asc" })
               handleSearchChange("")
-              setSelectedBrand(null)
             }}
             className={cn("text-xs hover:underline", tw.accent)}
           >
@@ -338,7 +373,12 @@ export default function CatalogClient({
       </main>
 
       {/* Drawers */}
-      <CardDetailSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
+      <CardDetailSheet
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
+        onReload={handleReload}
+        isReloading={isReloading}
+      />
       <FilterSortSheet
         open={filterOpen}
         onClose={() => setFilterOpen(false)}

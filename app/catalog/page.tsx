@@ -1,4 +1,8 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import {
+  getBrandStorageImageUrls,
+  mergeCatalogImageUrls,
+} from "@/lib/collection-images"
 import CatalogClient from "./components/CatalogClient"
 
 /* -------------------------------------------------------------------------
@@ -174,10 +178,11 @@ export default async function CatalogPage({
       remark: c.remark,
       brand_name: brandName,
       brand_id: c.brand_id,
-      imageUrls: [
-        ...getSeriesImageUrls(c.item_no),
-        ...extractRemarkImageUrls(c.remark),
-      ],
+      imageUrls: mergeCatalogImageUrls(
+        extractRemarkImageUrls(c.remark),
+        getBrandStorageImageUrls(brandName, c.item_no, c.name),
+        getSeriesImageUrls(c.item_no)
+      ),
       purchases,
       totalQty: purchases.reduce((sum, p) => sum + p.quantity, 0),
       isChase: purchases.some((p) => p.isChase),

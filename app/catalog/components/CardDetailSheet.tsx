@@ -5,7 +5,7 @@ import Image from "next/image"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ChevronLeft, ChevronRight, ShoppingBag, CalendarDays, Package } from "lucide-react"
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, ShoppingBag, CalendarDays, Package } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { colors, tw } from "@/lib/theme/diecast-theme"
 import type { CatalogItem, PurchaseRecord } from "../page"
@@ -13,6 +13,8 @@ import type { CatalogItem, PurchaseRecord } from "../page"
 interface CardDetailSheetProps {
   item: CatalogItem | null
   onClose: () => void
+  onReload?: () => void
+  isReloading?: boolean
 }
 
 function formatPrice(value: number): string {
@@ -41,7 +43,12 @@ function sortByPriceDesc(purchases: PurchaseRecord[]): PurchaseRecord[] {
   })
 }
 
-export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps) {
+export default function CardDetailSheet({
+  item,
+  onClose,
+  onReload,
+  isReloading = false,
+}: CardDetailSheetProps) {
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
   const [imageIndex, setImageIndex] = useState(0)
   const touchStartX = useRef<number | null>(null)
@@ -147,6 +154,27 @@ export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps)
                 <div className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">
                   {imageIndex + 1} / {total}
                 </div>
+              )}
+
+              {onReload && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFailedUrls(new Set())
+                    setImageIndex(0)
+                    onReload()
+                  }}
+                  disabled={isReloading}
+                  className="absolute left-2 top-2 rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm transition hover:bg-black/80 disabled:opacity-50"
+                  aria-label="Reload images"
+                  title="Reload catalog"
+                >
+                  {isReloading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </button>
               )}
 
               {/* Bottom fade into content */}

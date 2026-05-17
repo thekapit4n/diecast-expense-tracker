@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, useCallback, useImperativeHandle, forwardRef, useEffect } from "react"
+import { AgGridPanel } from "@/components/ag-grid/ag-grid-panel"
 import { AgGridReact } from "ag-grid-react"
 import { ColDef, ModuleRegistry, ICellRendererParams } from "ag-grid-community"
 import { AllEnterpriseModule, SetFilterModule } from "ag-grid-enterprise"
@@ -168,23 +169,26 @@ export const BrandsGrid = forwardRef<BrandsGridRef>((props, ref) => {
   }
 
   return (
-    <div className="ag-theme-quartz w-full h-[calc(100vh-12rem)]" key={reloadKey}>
-      <AgGridReact<Brand>
-        theme="legacy"
-        rowData={brandsDataState}
-        columnDefs={columnDefs}
-        defaultColDef={defaultColDef}
-        pagination={true}
-        paginationPageSize={100}
-        paginationPageSizeSelector={[10, 20, 50, 100]}
-        animateRows={true}
-        rowSelection={{
-          mode: "singleRow",
-          enableClickSelection: true,
-        }}
-        domLayout="normal"
-      />
-    </div>
+    <AgGridPanel key={reloadKey}>
+      {(popupParent) => (
+        <AgGridReact<Brand>
+          theme="legacy"
+          rowData={brandsDataState}
+          columnDefs={columnDefs}
+          defaultColDef={defaultColDef}
+          pagination={true}
+          paginationPageSize={100}
+          paginationPageSizeSelector={[10, 20, 50, 100]}
+          animateRows={true}
+          rowSelection={{
+            mode: "singleRow",
+            enableClickSelection: true,
+          }}
+          domLayout="normal"
+          popupParent={popupParent}
+        />
+      )}
+    </AgGridPanel>
   )
 })
 
