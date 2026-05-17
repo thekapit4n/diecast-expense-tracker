@@ -1,30 +1,17 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import {
-  Search, SlidersHorizontal, X, Menu,
-  Home, Car, ShoppingCart, List, PlusCircle, Tag, Store,
-} from "lucide-react"
+import { Search, SlidersHorizontal, X, Menu } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { colors, tw } from "@/lib/theme/diecast-theme"
+import { AppNavSheet } from "@/components/navigation/app-nav-sheet"
 import BrandTabs from "./BrandTabs"
 import DiecastCard from "./DiecastCard"
 import CardDetailSheet from "./CardDetailSheet"
 import FilterSortSheet, { type FilterState } from "./FilterSortSheet"
 import type { CatalogBrand, CatalogItem } from "../page"
-
-/* Car-paint accent — teal-blue #3c647b, green #669a62 */
-const MG = {
-  accent: "#3c647b",
-  accentBg: "bg-[#3c647b]",
-  accentText: "text-[#3c647b]",
-  accentRing: "ring-[#3c647b]",
-  accentBgFaint: "bg-[#3c647b]/15",
-  accentBorder: "border-[#3c647b]",
-}
 
 interface CatalogClientProps {
   items: CatalogItem[]
@@ -85,34 +72,6 @@ function sortCatalogItems(
       return [...list].sort(byItemNo)
   }
 }
-
-const NAV_GROUPS = [
-  {
-    label: "Main",
-    items: [{ href: "/", label: "Dashboard", icon: Home }],
-  },
-  {
-    label: "Collection",
-    items: [
-      { href: "/collection", label: "List", icon: List },
-      { href: "/catalog", label: "Catalog", icon: Car },
-    ],
-  },
-  {
-    label: "Purchases",
-    items: [
-      { href: "/purchase/list", label: "List", icon: ShoppingCart },
-      { href: "/purchase/add", label: "New Purchase", icon: PlusCircle },
-    ],
-  },
-  {
-    label: "Management",
-    items: [
-      { href: "/management/brands", label: "Brand", icon: Tag },
-      { href: "/management/shops", label: "Shop", icon: Store },
-    ],
-  },
-]
 
 export default function CatalogClient({
   items,
@@ -228,26 +187,26 @@ export default function CatalogClient({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-2xl flex-col bg-[#0b1822] lg:max-w-none">
+    <div className="mx-auto flex min-h-dvh max-w-2xl flex-col bg-background lg:max-w-none">
 
       {/* ------------------------------------------------------------------ */}
       {/* Sticky Header                                                        */}
       {/* ------------------------------------------------------------------ */}
-      <header className="sticky top-0 z-30 border-b border-[#1d3344] bg-[#0b1822]/95 backdrop-blur-md">
+      <header className={tw.headerSticky}>
         <div className="flex items-center justify-between px-4 py-3">
 
           <div className={cn("transition-all", searchOpen ? "hidden" : "flex items-center gap-2")}>
             <button
               type="button"
               onClick={() => setNavOpen(true)}
-              className="rounded-full p-1.5 text-[#A1A1AA] transition hover:bg-[#122030] hover:text-[#F4F4F5]"
+              className="rounded-full p-1.5 text-muted-foreground transition hover:bg-card hover:text-foreground"
               aria-label="Open menu"
             >
               <Menu className="h-[18px] w-[18px]" />
             </button>
             <div>
-              <h1 className="text-base font-bold tracking-tight text-[#F4F4F5]">Diecast Catalog</h1>
-              <p className="text-[11px] text-[#A1A1AA]">
+              <h1 className="text-base font-bold tracking-tight text-foreground">Diecast Catalog</h1>
+              <p className="text-[11px] text-muted-foreground">
                 {items.length} {items.length === 1 ? "Model" : "Models"} · {brands.length}{" "}
                 {brands.length === 1 ? "Brand" : "Brands"}
               </p>
@@ -263,13 +222,13 @@ export default function CatalogClient({
                   value={search}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   placeholder="Search models, brands, codes..."
-                  className="h-9 border-[#1d3344] bg-[#122030] pl-8 pr-4 text-sm text-[#F4F4F5] placeholder:text-[#52525B] focus-visible:ring-[#3c647b]"
+                  className={cn("h-9 pl-8 pr-4 text-sm", tw.input)}
                 />
               </div>
               <button
                 type="button"
                 onClick={() => { setSearchOpen(false); handleSearchChange("") }}
-                className="rounded-full p-1.5 text-[#A1A1AA] hover:text-[#F4F4F5] hover:bg-[#122030]"
+                className="rounded-full p-1.5 text-muted-foreground hover:bg-card hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -281,7 +240,7 @@ export default function CatalogClient({
               <button
                 type="button"
                 onClick={() => setSearchOpen(true)}
-                className="rounded-full p-2 text-[#A1A1AA] transition hover:bg-[#16181D] hover:text-[#F4F4F5]"
+                className="rounded-full p-2 text-muted-foreground transition hover:bg-card hover:text-foreground"
               >
                 <Search className="h-[18px] w-[18px]" />
               </button>
@@ -289,15 +248,15 @@ export default function CatalogClient({
                 type="button"
                 onClick={() => setFilterOpen(true)}
                 className={cn(
-                  "relative rounded-full p-2 transition hover:bg-[#122030]",
-                  activeFilterCount > 0 ? MG.accentText : "text-[#A1A1AA] hover:text-[#F4F4F5]"
+                  "relative rounded-full p-2 transition hover:bg-card",
+                  activeFilterCount > 0 ? tw.accent : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <SlidersHorizontal className="h-[18px] w-[18px]" />
                 {activeFilterCount > 0 && (
                   <span
                     className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold text-white"
-                    style={{ backgroundColor: MG.accent }}
+                    style={{ backgroundColor: colors.accent.default }}
                   >
                     {activeFilterCount}
                   </span>
@@ -318,7 +277,7 @@ export default function CatalogClient({
           {filtered.length} {filtered.length === 1 ? "result" : "results"}
           {search && (
             <span className="ml-1">
-              for &ldquo;<span className="text-[#A1A1AA]">{search}</span>&rdquo;
+              for &ldquo;<span className="text-muted-foreground">{search}</span>&rdquo;
             </span>
           )}
         </p>
@@ -330,7 +289,7 @@ export default function CatalogClient({
               handleSearchChange("")
               setSelectedBrand(null)
             }}
-            className={cn("text-xs hover:underline", MG.accentText)}
+            className={cn("text-xs hover:underline", tw.accent)}
           >
             Clear all
           </button>
@@ -345,17 +304,17 @@ export default function CatalogClient({
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="flex flex-col gap-2">
-                <Skeleton className="aspect-square w-full rounded-2xl bg-[#122030]" />
-                <Skeleton className="h-3 w-3/4 rounded bg-[#122030]" />
-                <Skeleton className="h-3 w-1/2 rounded bg-[#122030]" />
+                <Skeleton className="aspect-square w-full rounded-2xl bg-card" />
+                <Skeleton className="h-3 w-3/4 rounded bg-card" />
+                <Skeleton className="h-3 w-1/2 rounded bg-card" />
               </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="text-4xl">🔍</div>
-            <p className="mt-3 text-sm font-semibold text-[#F4F4F5]">No models found</p>
-            <p className="mt-1 text-xs text-[#71717A]">Try a different search or filter</p>
+            <p className="mt-3 text-sm font-semibold text-foreground">No models found</p>
+            <p className="mt-1 text-xs text-muted-foreground">Try a different search or filter</p>
           </div>
         ) : (
           <>
@@ -371,7 +330,7 @@ export default function CatalogClient({
             {/* Subtle loading indicator */}
             {hasMore && (
               <div className="flex justify-center py-2">
-                <span className="text-xs text-[#2a4555]">Loading more…</span>
+                <span className="text-xs text-muted-foreground/60">Loading more…</span>
               </div>
             )}
           </>
@@ -389,74 +348,7 @@ export default function CatalogClient({
         onChange={handleFiltersChange}
       />
 
-      {/* ---- Burger nav sheet ---- */}
-      <Sheet open={navOpen} onOpenChange={setNavOpen}>
-        <SheetContent
-          side="left"
-          showCloseButton={false}
-          className="w-72 border-[#1d3344] bg-[#0e1c28] p-0 text-[#F4F4F5]"
-        >
-          <SheetClose
-            className="group absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-md border transition-colors hover:border-[rgba(255,255,255,0.12)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5EEAD4]/40"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.03)",
-              borderColor: "rgba(255,255,255,0.08)",
-            }}
-          >
-            <X className="h-4 w-4 text-[#94A3B8] transition-colors group-hover:text-[#B6FFF2]" />
-            <span className="sr-only">Close</span>
-          </SheetClose>
-
-          <SheetHeader
-            className="border-b px-5 py-4 pr-14"
-            style={{ borderColor: "rgba(125,211,252,0.06)" }}
-          >
-            <SheetTitle className="text-left text-base font-bold text-[#F4F4F5]">
-              Diecast Tracker
-            </SheetTitle>
-          </SheetHeader>
-
-          <nav className="flex flex-col gap-1 overflow-y-auto px-3 py-3">
-            {NAV_GROUPS.map((group) => (
-              <div key={group.label}>
-                <p
-                  className="mb-1 mt-2 px-2 text-[10px] font-semibold uppercase text-[#4B6B88]"
-                  style={{ letterSpacing: "0.14em" }}
-                >
-                  {group.label}
-                </p>
-                {group.items.map((navItem) => {
-                  const Icon = navItem.icon
-                  const isCurrent = navItem.href === "/catalog"
-                  return (
-                    <Link
-                      key={navItem.href}
-                      href={navItem.href}
-                      onClick={() => setNavOpen(false)}
-                      className={cn(
-                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                        isCurrent
-                          ? "bg-[rgba(45,212,191,0.08)] font-semibold text-[#99F6E4]"
-                          : "text-[#A1A1AA] hover:bg-[rgba(255,255,255,0.03)] hover:text-[#B6FFF2]"
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          "h-4 w-4 shrink-0 transition-colors",
-                          isCurrent
-                            ? "text-[#5EEAD4] drop-shadow-[0_0_8px_rgba(45,212,191,0.25)]"
-                            : "text-[#94A3B8] group-hover:text-[#B6FFF2]"
-                        )}
-                      />
-                      {navItem.label}
-                    </Link>
-                  )
-                })}
-              </div>
-            ))}
-          </nav>
-        </SheetContent>
-      </Sheet>
+      <AppNavSheet open={navOpen} onOpenChange={setNavOpen} />
     </div>
   )
 }

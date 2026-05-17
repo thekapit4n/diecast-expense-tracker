@@ -7,6 +7,7 @@ import { AllEnterpriseModule, SetFilterModule } from "ag-grid-enterprise"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { tw } from "@/lib/theme/diecast-theme"
 
 // Register AG Grid modules (Enterprise only)
 ModuleRegistry.registerModules([AllEnterpriseModule, SetFilterModule])
@@ -23,9 +24,7 @@ export interface Brand {
 function StatusBadge({ value }: { value: number }) {
   const isActive = value === 1
   const statusText = isActive ? "Active" : "Inactive"
-  const statusColors = isActive
-    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-    : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+  const statusColors = isActive ? tw.badgePaid : tw.badgeInactive
 
   return (
     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors}`}>
@@ -159,7 +158,7 @@ export const BrandsGrid = forwardRef<BrandsGridRef>((props, ref) => {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
         <div className="text-center">
-          <p className="text-red-600 dark:text-red-400 mb-4">Error: {error}</p>
+          <p className="mb-4 text-destructive">Error: {error}</p>
           <Button onClick={reload} variant="default">
             Retry
           </Button>

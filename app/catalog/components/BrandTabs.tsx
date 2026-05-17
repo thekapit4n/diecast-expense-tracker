@@ -2,6 +2,7 @@
 
 import { useRef } from "react"
 import { cn } from "@/lib/utils"
+import { tw } from "@/lib/theme/diecast-theme"
 import type { CatalogBrand } from "../page"
 
 interface BrandTabsProps {
@@ -29,9 +30,7 @@ export default function BrandTabs({ brands, selected, onChange }: BrandTabsProps
             onClick={() => onChange(tab.id)}
             className={cn(
               "snap-start whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold transition-all duration-150",
-              isActive
-                ? "bg-[#3c647b] text-white shadow-[0_0_12px_rgba(60,100,123,0.55)]"
-                : "border border-[#1d3344] bg-[#122030] text-[#A1A1AA] hover:border-[#3c647b] hover:text-[#F4F4F5]"
+              isActive ? tw.pillActive : tw.pillInactive
             )}
           >
             {tab.label}

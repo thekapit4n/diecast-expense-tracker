@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { tw } from "@/lib/theme/diecast-theme"
 import type { CatalogBrand } from "../page"
 
 export type SortOption = "name_asc" | "name_desc" | "series_asc"
@@ -30,6 +31,29 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "series_asc", label: "Series No." },
 ]
 
+function PillButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full px-4 py-1.5 text-xs font-semibold transition-all",
+        active ? tw.pillActive : tw.pillInactive
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
 export default function FilterSortSheet({
   open,
   onClose,
@@ -38,7 +62,6 @@ export default function FilterSortSheet({
   filters,
   onChange,
 }: FilterSortSheetProps) {
-  /* Local draft so changes only apply when user taps Apply */
   const [draft, setDraft] = useState<FilterState>(filters)
 
   function toggleBrand(name: string) {
@@ -71,7 +94,6 @@ export default function FilterSortSheet({
     onClose()
   }
 
-  /* Sync draft when sheet opens */
   function handleOpenChange(isOpen: boolean) {
     if (isOpen) setDraft(filters)
     else onClose()
@@ -79,103 +101,75 @@ export default function FilterSortSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-[#1d3344] bg-[#0e1c28] px-0 pb-8 text-[#F4F4F5]"
-      >
+      <SheetContent side="bottom" className={cn("max-h-[85dvh] overflow-y-auto rounded-t-2xl px-0 pb-8", tw.sheet)}>
         <SheetHeader className="px-5 pb-2 pt-4">
-          <SheetTitle className="text-left text-base font-bold text-[#F4F4F5]">
+          <SheetTitle className="text-left text-base font-bold text-foreground">
             Filter &amp; Sort
           </SheetTitle>
         </SheetHeader>
 
-        <Separator className="bg-[#1d3344]" />
+        <Separator className="bg-border" />
 
-        {/* Sort */}
         <div className="px-5 pt-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#A1A1AA]">Sort</p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Sort</p>
           <div className="flex flex-wrap gap-2">
             {SORT_OPTIONS.map((opt) => (
-              <button
+              <PillButton
                 key={opt.value}
-                type="button"
+                active={draft.sort === opt.value}
                 onClick={() => setDraft((prev) => ({ ...prev, sort: opt.value }))}
-                className={cn(
-                  "rounded-full px-4 py-1.5 text-xs font-semibold transition-all",
-                  draft.sort === opt.value
-                    ? "bg-[#3c647b] text-white"
-                    : "border border-[#1d3344] bg-transparent text-[#A1A1AA] hover:border-[#3c647b]"
-                )}
               >
                 {opt.label}
-              </button>
+              </PillButton>
             ))}
           </div>
         </div>
 
-        {/* Brand filter */}
         {brands.length > 0 && (
           <div className="px-5 pt-5">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#A1A1AA]">Brand</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Brand</p>
             <div className="flex flex-wrap gap-2">
               {brands.map((brand) => (
-                <button
+                <PillButton
                   key={brand.id}
-                  type="button"
+                  active={draft.brands.includes(brand.name)}
                   onClick={() => toggleBrand(brand.name)}
-                  className={cn(
-                    "rounded-full px-4 py-1.5 text-xs font-semibold transition-all",
-                    draft.brands.includes(brand.name)
-                      ? "bg-[#3c647b] text-white"
-                      : "border border-[#1d3344] bg-transparent text-[#A1A1AA] hover:border-[#3c647b]"
-                  )}
                 >
                   {brand.name}
-                </button>
+                </PillButton>
               ))}
             </div>
           </div>
         )}
 
-        {/* Scale filter */}
         {scales.length > 0 && (
           <div className="px-5 pt-5">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#A1A1AA]">Scale</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Scale</p>
             <div className="flex flex-wrap gap-2">
               {scales.map((scale) => (
-                <button
+                <PillButton
                   key={scale}
-                  type="button"
+                  active={draft.scales.includes(scale)}
                   onClick={() => toggleScale(scale)}
-                  className={cn(
-                    "rounded-full px-4 py-1.5 text-xs font-semibold transition-all",
-                    draft.scales.includes(scale)
-                      ? "bg-[#3c647b] text-white"
-                      : "border border-[#1d3344] bg-transparent text-[#A1A1AA] hover:border-[#3c647b]"
-                  )}
                 >
                   {scale}
-                </button>
+                </PillButton>
               ))}
             </div>
           </div>
         )}
 
-        <Separator className="mx-5 mt-6 bg-[#1d3344]" />
+        <Separator className="mx-5 mt-6 bg-border" />
 
-        {/* Actions */}
         <div className="flex gap-3 px-5 pt-4">
           <Button
             variant="outline"
-            className="flex-1 border-[#1d3344] bg-transparent text-[#A1A1AA] hover:bg-[#1d3344] hover:text-[#F4F4F5]"
+            className="flex-1 border-border bg-transparent text-muted-foreground hover:bg-border hover:text-foreground"
             onClick={handleReset}
           >
             Reset
           </Button>
-          <Button
-            className="flex-1 bg-[#3c647b] text-white hover:bg-[#4e7a93] font-semibold"
-            onClick={handleApply}
-          >
+          <Button className={cn("flex-1 font-semibold text-white", tw.accentBg, tw.accentBgHover)} onClick={handleApply}>
             Apply
           </Button>
         </div>

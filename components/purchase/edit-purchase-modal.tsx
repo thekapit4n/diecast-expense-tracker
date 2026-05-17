@@ -765,7 +765,7 @@ export function EditPurchaseModal({
                         {isCheckingMiniGtImage ? (
                           <p className="text-xs text-muted-foreground">Checking existing image...</p>
                         ) : hasMiniGtImage ? (
-                          <p className="text-xs text-green-600">Image already exists for this series.</p>
+                          <p className="text-xs text-owned">Image already exists for this series.</p>
                         ) : null}
                       </div>
 
@@ -1476,9 +1476,9 @@ export function EditPurchaseModal({
             <div className="flex-shrink-0">
               <span className={cn(
                 "text-xs px-2 py-0.5 rounded",
-                isSelected 
-                  ? "bg-sky-800 text-white dark:bg-sky-800 dark:text-white" 
-                  : "bg-gray-100 text-gray-700 dark:bg-stone-700 dark:text-stone-200"
+                isSelected
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
               )} style={{ fontSize: '0.9em' }}>
                 {item.sublabel}
               </span>

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ChevronLeft, ChevronRight, ShoppingBag, CalendarDays, Package } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { colors, tw } from "@/lib/theme/diecast-theme"
 import type { CatalogItem, PurchaseRecord } from "../page"
 
 interface CardDetailSheetProps {
@@ -39,10 +40,6 @@ function sortByPriceDesc(purchases: PurchaseRecord[]): PurchaseRecord[] {
     return b.pricePerUnit - a.pricePerUnit
   })
 }
-
-/* Car-paint accents — teal-blue & green from the chameleon Lamborghini */
-const MG_ACCENT = "#3c647b"
-const MG_GREEN = "#669a62"
 
 export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps) {
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
@@ -79,8 +76,8 @@ export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps)
 
   return (
     <Drawer open={!!item} onClose={onClose}>
-      <DrawerContent className="border-t-2 bg-[#0e1c28] text-[#F4F4F5] focus:outline-none" style={{ borderColor: MG_ACCENT }}>
-        <div className="mx-auto mt-2 h-1 w-12 rounded-full" style={{ backgroundColor: `${MG_ACCENT}80` }} />
+      <DrawerContent className={cn("border-t-2 focus:outline-none", tw.sheet)} style={{ borderColor: colors.accent.default }}>
+        <div className="mx-auto mt-2 h-1 w-12 rounded-full" style={{ backgroundColor: colors.accent.handle }} />
 
         {item && (
           /*
@@ -93,7 +90,9 @@ export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps)
             {/* ---- Fixed image carousel ---- */}
             <div
               className="relative h-72 w-full shrink-0 overflow-hidden sm:h-80"
-              style={{ background: "radial-gradient(ellipse at center, #0d2233 0%, #0a1820 100%)" }}
+              style={{
+                background: `radial-gradient(ellipse at center, ${colors.surface.imageGradientFrom} 0%, ${colors.surface.imageGradientTo} 100%)`,
+              }}
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
             >
@@ -158,7 +157,7 @@ export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps)
             <div className="flex-1 overflow-y-auto">
               <div className="px-5 pt-4">
                 <DrawerHeader className="p-0">
-                  <DrawerTitle className="text-left text-lg font-bold leading-snug" style={{ color: "#BFE9FF" }}>
+                  <DrawerTitle className={cn("text-left text-lg font-bold leading-snug", tw.textTitle)}>
                     {item.name}
                   </DrawerTitle>
                 </DrawerHeader>
@@ -167,7 +166,7 @@ export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps)
                   {item.item_no && (
                     <Badge
                       variant="outline"
-                      className="border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.08)] text-[#99F6E4]"
+                      className={tw.badgeTeal}
                     >
                       {item.item_no}
                     </Badge>
@@ -181,13 +180,13 @@ export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps)
                   {item.scale && (
                     <Badge
                       variant="outline"
-                      className="border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.08)] text-[#99F6E4]"
+                      className={tw.badgeTeal}
                     >
                       {item.scale}
                     </Badge>
                   )}
                   {item.isChase && (
-                    <Badge className="bg-[#FF3B30] text-white hover:bg-[#FF3B30]">Chase</Badge>
+                    <Badge className="bg-destructive text-white hover:bg-destructive">Chase</Badge>
                   )}
                   {item.isCase && (
                     <Badge className="bg-amber-500 text-white hover:bg-amber-500">Case</Badge>
@@ -198,18 +197,21 @@ export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps)
               {/* Purchase history */}
               {sortedPurchases.length > 0 && (
                 <div className="px-5 pb-8 pt-4">
-                  <Separator className="mb-4" style={{ backgroundColor: `${MG_ACCENT}30` }} />
+                  <Separator className="mb-4" style={{ backgroundColor: colors.accent.separator }} />
 
                   <div className="mb-3 flex items-center justify-between">
                     <p
-                      className="text-xs uppercase"
-                      style={{ color: "#4B6B88", letterSpacing: "0.12em", fontWeight: 600 }}
+                      className={cn("text-xs uppercase", tw.textSection)}
+                      style={{ letterSpacing: "0.12em", fontWeight: 600 }}
                     >
                       Purchase History
                     </p>
-                    <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1" style={{ backgroundColor: `${MG_GREEN}20` }}>
-                      <Package className="h-3 w-3" style={{ color: MG_GREEN }} />
-                      <span className="text-[11px] font-bold" style={{ color: MG_GREEN }}>
+                    <div
+                      className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                      style={{ backgroundColor: colors.owned.faint }}
+                    >
+                      <Package className="h-3 w-3" style={{ color: colors.owned.default }} />
+                      <span className="text-[11px] font-bold" style={{ color: colors.owned.default }}>
                         {totalQty} {totalQty === 1 ? "unit" : "units"} owned
                       </span>
                     </div>
@@ -219,7 +221,7 @@ export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps)
                     {sortedPurchases.map((p, idx) => {
                       const date = formatDate(p.paymentDate)
                       return (
-                        <div key={idx} className="rounded-xl border border-[#1d3344] bg-[#0b1822] p-3">
+                        <div key={idx} className="rounded-xl border border-border bg-background p-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
@@ -252,22 +254,22 @@ export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps)
                               ) : (
                                 <p className="text-sm text-[#52525B]">—</p>
                               )}
-                              <div className="mt-1 inline-flex items-center rounded-full bg-[#1d3344] px-2 py-0.5">
+                              <div className="mt-1 inline-flex items-center rounded-full bg-border px-2 py-0.5">
                                 <span className="text-[10px] font-semibold text-[#A1A1AA]">×{p.quantity}</span>
                               </div>
                             </div>
                           </div>
 
                           {p.totalPrice != null && p.quantity > 1 && (
-                            <div className="mt-2 border-t border-[#1d3344] pt-2 text-right">
+                            <div className="mt-2 border-t border-border pt-2 text-right">
                               <span className="text-[11px] text-[#71717A]">Total: </span>
                               <span className="text-[11px] font-semibold text-[#A1A1AA]">{formatPrice(p.totalPrice)}</span>
                             </div>
                           )}
 
                           {p.isChase && (
-                            <div className="mt-2 border-t border-[#1d3344] pt-2">
-                              <span className="rounded-full bg-[#FF3B30]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#FF3B30]">
+                            <div className="mt-2 border-t border-border pt-2">
+                              <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive">
                                 Chase Unit
                               </span>
                             </div>
@@ -281,7 +283,7 @@ export default function CardDetailSheet({ item, onClose }: CardDetailSheetProps)
 
               {sortedPurchases.length === 0 && (
                 <div className="px-5 pb-8 pt-2">
-                  <Separator className="mb-4 bg-[#1d3344]" />
+                  <Separator className="mb-4 bg-border" />
                   <p className="text-center text-xs text-[#52525B]">No purchase records</p>
                 </div>
               )}

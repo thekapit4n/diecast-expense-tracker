@@ -771,7 +771,7 @@ export default function AddPurchasePage() {
                         {isCheckingMiniGtImage ? (
                           <p className="text-xs text-muted-foreground">Checking existing image...</p>
                         ) : hasMiniGtImage ? (
-                          <p className="text-xs text-green-600">Image already exists for this series.</p>
+                          <p className="text-xs text-owned">Image already exists for this series.</p>
                         ) : null}
                       </div>
 

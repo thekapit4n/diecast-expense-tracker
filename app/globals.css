@@ -3,9 +3,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Sync with lib/theme/diecast-theme.ts */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-owned: var(--owned);
+  --color-title-highlight: var(--title-highlight);
+  --color-nav-active: var(--nav-active);
+  --color-nav-active-foreground: var(--nav-active-foreground);
+  --color-surface-elevated: var(--surface-elevated);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -45,37 +51,43 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #0b1822;
+  --foreground: #f4f4f5;
+  --card: #122030;
+  --card-foreground: #f4f4f5;
+  --popover: #0e1c28;
+  --popover-foreground: #f4f4f5;
+  --primary: #3c647b;
+  --primary-foreground: #ffffff;
+  --secondary: #122030;
+  --secondary-foreground: #f4f4f5;
+  --muted: #122030;
+  --muted-foreground: #a1a1aa;
+  --accent: #122030;
+  --accent-foreground: #f4f4f5;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #1d3344;
+  --input: #1d3344;
+  --ring: #3c647b;
+  --chart-1: #3c647b;
+  --chart-2: #669a62;
+  --chart-3: #5eead4;
+  --chart-4: #f59e0b;
+  --chart-5: #ef4444;
+  --sidebar: #0e1c28;
+  --sidebar-foreground: #f4f4f5;
+  --sidebar-primary: #3c647b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(45, 212, 191, 0.08);
+  --sidebar-accent-foreground: #99f6e4;
+  --sidebar-border: #1d3344;
+  --sidebar-ring: #3c647b;
+  --owned: #669a62;
+  --title-highlight: #bfe9ff;
+  --nav-active: #99f6e4;
+  --nav-active-foreground: #99f6e4;
+  --surface-elevated: #0e1c28;
 }
 
 .dark {
@@ -121,15 +133,58 @@
   }
 }
 
-/* AG Grid styles - ensure they're not overridden by Tailwind */
+/* AG Grid — sync with lib/theme/diecast-theme.ts */
 .ag-theme-quartz {
+  color-scheme: dark;
+
   --ag-font-family: var(--font-geist-sans);
   --ag-font-size: 14px;
+
+  --ag-active-color: var(--primary);
+  --ag-background-color: var(--background);
+  --ag-foreground-color: var(--foreground);
+  --ag-data-color: var(--foreground);
+  --ag-header-foreground-color: var(--foreground);
+  --ag-secondary-foreground-color: var(--muted-foreground);
+  --ag-disabled-foreground-color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+
+  --ag-border-color: var(--border);
+  --ag-secondary-border-color: #2a4555;
+
+  --ag-header-background-color: var(--card);
+  --ag-tooltip-background-color: var(--surface-elevated);
+  --ag-control-panel-background-color: var(--card);
+  --ag-subheader-background-color: var(--surface-elevated);
+  --ag-panel-background-color: var(--card);
+  --ag-menu-background-color: var(--surface-elevated);
+
+  --ag-odd-row-background-color: var(--background);
+  --ag-row-hover-color: color-mix(in srgb, var(--primary) 14%, transparent);
+  --ag-selected-row-background-color: color-mix(in srgb, var(--primary) 22%, transparent);
+  --ag-column-hover-color: color-mix(in srgb, var(--foreground) 5%, transparent);
+
+  --ag-checkbox-background-color: var(--card);
+  --ag-checkbox-unchecked-color: var(--muted-foreground);
+  --ag-checkbox-checked-color: var(--primary);
+  --ag-input-border-color: var(--border);
+  --ag-input-disabled-background-color: var(--muted);
+  --ag-input-disabled-border-color: var(--border);
+  --ag-input-focus-border-color: var(--primary);
+
+  --ag-chip-background-color: var(--muted);
+  --ag-chip-border-color: var(--border);
+  --ag-icon-font-color: var(--muted-foreground);
+
+  --ag-card-shadow: none;
+  --ag-popup-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  --ag-filter-panel-apply-button-color: var(--primary-foreground);
+  --ag-filter-panel-apply-button-background-color: var(--primary);
 }
 
 .ag-theme-quartz .ag-root-wrapper {
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  background-color: var(--background);
 }
 
 .ag-theme-quartz .ag-header {
@@ -137,10 +192,82 @@
   border-bottom: 1px solid var(--border);
 }
 
+.ag-theme-quartz .ag-paging-panel {
+  background-color: var(--card);
+  border-top-color: var(--border);
+  color: var(--foreground);
+}
+
+.ag-theme-quartz .ag-paging-panel .ag-picker-field-wrapper,
+.ag-theme-quartz .ag-paging-panel .ag-wrapper,
+.ag-theme-quartz .ag-paging-panel select {
+  background-color: var(--background);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.ag-theme-quartz .ag-paging-button {
+  color: var(--foreground);
+}
+
+.ag-theme-quartz .ag-paging-button.ag-disabled {
+  color: var(--muted-foreground);
+}
+
+.ag-theme-quartz .ag-status-bar {
+  background-color: var(--card);
+  border-top-color: var(--border);
+  color: var(--muted-foreground);
+}
+
 .ag-theme-quartz .ag-row {
   border-bottom: 1px solid var(--border);
 }
 
 .ag-theme-quartz .ag-row:hover {
-  background-color: var(--muted);
+  background-color: var(--ag-row-hover-color);
+}
+
+.ag-theme-quartz .ag-row-odd {
+  background-color: var(--background);
+}
+
+.ag-theme-quartz .ag-row-even {
+  background-color: var(--card);
+}
+
+.ag-theme-quartz .ag-cell,
+.ag-theme-quartz .ag-header-cell {
+  color: var(--foreground);
+}
+
+.ag-theme-quartz .ag-header-cell-label,
+.ag-theme-quartz .ag-header-icon {
+  color: var(--foreground);
+}
+
+.ag-theme-quartz .ag-overlay-loading-wrapper,
+.ag-theme-quartz .ag-overlay-no-rows-wrapper {
+  background-color: color-mix(in srgb, var(--background) 85%, transparent);
+  color: var(--foreground);
+}
+
+.ag-theme-quartz .ag-menu,
+.ag-theme-quartz .ag-popup-child {
+  background-color: var(--surface-elevated);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.ag-theme-quartz .ag-filter-toolpanel-header,
+.ag-theme-quartz .ag-set-filter-list {
+  background-color: var(--card);
+  color: var(--foreground);
+}
+
+.ag-theme-quartz input[class^="ag-"],
+.ag-theme-quartz select[class^="ag-"] {
+  background-color: var(--background);
+  border-color: var(--border);
+  color: var(--foreground);
 }

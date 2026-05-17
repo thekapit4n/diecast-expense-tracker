@@ -1,0 +1,112 @@
+/**
+ * Diecast catalog palette — single source of truth for hex values.
+ * Keep in sync with app/globals.css (:root custom properties).
+ */
+
+export const colors = {
+  surface: {
+    page: "#0b1822",
+    elevated: "#0e1c28",
+    card: "#122030",
+    imageGradientFrom: "#0d2233",
+    imageGradientTo: "#0a1820",
+  },
+  border: {
+    default: "#1d3344",
+    hover: "#2a4555",
+    navHeader: "rgba(125,211,252,0.06)",
+    navClose: "rgba(255,255,255,0.08)",
+    navCloseHover: "rgba(255,255,255,0.12)",
+  },
+  text: {
+    primary: "#F4F4F5",
+    secondary: "#A1A1AA",
+    muted: "#71717A",
+    faint: "#52525B",
+    title: "#BFE9FF",
+    section: "#4B6B88",
+    slate: "#64748B",
+    slateLight: "#94A3B8",
+    slateBright: "#E2E8F0",
+    slatePale: "#F1F5F9",
+  },
+  accent: {
+    default: "#3c647b",
+    hover: "#4e7a93",
+    glow: "rgba(60,100,123,0.55)",
+    faint: "rgba(60,100,123,0.15)",
+    separator: "rgba(60,100,123,0.30)",
+    handle: "rgba(60,100,123,0.50)",
+  },
+  owned: {
+    default: "#669a62",
+    faint: "rgba(102,154,98,0.20)",
+    border: "rgba(102,154,98,0.40)",
+    borderHover: "rgba(102,154,98,0.80)",
+    onBadge: "#0b1822",
+  },
+  nav: {
+    activeBg: "rgba(45,212,191,0.08)",
+    activeText: "#99F6E4",
+    activeIcon: "#5EEAD4",
+    hoverText: "#B6FFF2",
+    hoverBg: "rgba(255,255,255,0.03)",
+    iconGlow: "rgba(45,212,191,0.25)",
+    badgeBg: "rgba(45,212,191,0.08)",
+    badgeBorder: "rgba(45,212,191,0.18)",
+    closeBg: "rgba(255,255,255,0.03)",
+  },
+  semantic: {
+    chase: "#FF3B30",
+    chaseFaint: "rgba(255,59,48,0.15)",
+    destructive: "#ef4444",
+    success: "#669a62",
+    successFaint: "rgba(102,154,98,0.15)",
+    warning: "#f59e0b",
+  },
+} as const
+
+/** Prebuilt Tailwind class bundles — prefer semantic tokens (bg-background) where possible */
+export const tw = {
+  page: "bg-background text-foreground",
+  surfaceElevated: "bg-[#0e1c28]",
+  surfaceCard: "bg-card",
+  border: "border-border",
+  borderHover: "border-[#2a4555]",
+  textPrimary: "text-foreground",
+  textSecondary: "text-muted-foreground",
+  textMuted: "text-[#71717A]",
+  textFaint: "text-[#52525B]",
+  textTitle: "text-[#BFE9FF]",
+  textSection: "text-[#4B6B88]",
+  accent: "text-primary",
+  accentBg: "bg-primary",
+  accentBgHover: "hover:bg-[#4e7a93]",
+  accentBorder: "border-primary",
+  accentRing: "ring-primary focus-visible:ring-primary",
+  accentBgFaint: "bg-primary/15",
+  ownedBorder: "border-[#669a62]/40 hover:border-[#669a62]/80",
+  ownedBadge: "bg-[#669a62] text-[#0b1822]",
+  pillActive: "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(60,100,123,0.55)]",
+  pillInactive:
+    "border border-border bg-card text-muted-foreground hover:border-primary hover:text-foreground",
+  input:
+    "border-border bg-card text-foreground placeholder:text-[#52525B] focus-visible:ring-primary",
+  sheet: "border-border bg-[#0e1c28] text-foreground",
+  headerSticky: "sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md",
+  navGroupLabel:
+    "mb-1 mt-2 px-2 text-[10px] font-semibold uppercase text-[#4B6B88] tracking-[0.14em]",
+  badgeTeal: "border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.08)] text-[#99F6E4]",
+  badgeSuccess: "bg-[#669a62]/15 text-[#669a62]",
+  badgeDestructive: "bg-destructive/15 text-destructive",
+  badgeWarning: "bg-amber-500/15 text-amber-400",
+  badgeMuted: "bg-muted text-muted-foreground",
+  badgePrimary: "bg-primary/15 text-primary",
+  badgePaid: "bg-owned/15 text-owned",
+  badgeUnpaid: "bg-amber-500/15 text-amber-400",
+  badgeRefunded: "bg-destructive/15 text-destructive",
+  badgeInactive: "bg-muted text-muted-foreground",
+  badgeEditionEvent: "bg-amber-500/15 text-amber-400",
+  badgeEditionLtd: "bg-primary/20 text-[#BFE9FF]",
+  badgeEditionBlack: "bg-foreground/90 text-background",
+} as const

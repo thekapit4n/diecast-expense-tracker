@@ -19,6 +19,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { EditPurchaseModal } from "./edit-purchase-modal"
 import { Link as LinkIcon } from "lucide-react"
+import { tw } from "@/lib/theme/diecast-theme"
 
 // Register AG Grid modules (Enterprise only)
 ModuleRegistry.registerModules([AllEnterpriseModule, SetFilterModule])
@@ -29,12 +30,12 @@ function PaymentStatusBadge({ value }: { value: string | null }) {
   
   const status = value.toLowerCase()
   const colors: Record<string, string> = {
-    paid: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-    unpaid: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-    refunded: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    paid: tw.badgePaid,
+    unpaid: tw.badgeUnpaid,
+    refunded: tw.badgeRefunded,
   }
-  
-  const colorClass = colors[status] || "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+
+  const colorClass = colors[status] || tw.badgeMuted
   
   return (
     <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
@@ -57,16 +58,16 @@ function EditionTypeBadge({ value }: { value: string | null }) {
   
   // If normal, just return plain text without badge
   if (editionType === 'normal') {
-    return <span className="text-sm text-gray-600 dark:text-gray-400">{displayText}</span>
+    return <span className="text-sm text-muted-foreground">{displayText}</span>
   }
   
   const colors: Record<string, string> = {
-    'event car': "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-200",
-    'ltd': "bg-blue-900 text-blue-100 dark:bg-blue-950 dark:text-blue-200",
-    'black edition': "bg-gray-900 text-white dark:bg-black dark:text-gray-100",
+    "event car": tw.badgeEditionEvent,
+    ltd: tw.badgeEditionLtd,
+    "black edition": tw.badgeEditionBlack,
   }
-  
-  const colorClass = colors[editionType] || "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+
+  const colorClass = colors[editionType] || tw.badgeMuted
   
   return (
     <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
@@ -797,7 +798,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
         <div className="text-center">
-          <p className="text-red-600 dark:text-red-400 mb-4">Error: {error}</p>
+          <p className="mb-4 text-destructive">Error: {error}</p>
           <Button onClick={reload} variant="default">
             Retry
           </Button>

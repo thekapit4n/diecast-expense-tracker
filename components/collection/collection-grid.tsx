@@ -260,7 +260,7 @@ export function CollectionGrid() {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-12rem)]">
         <div className="text-center">
-          <p className="text-red-600 dark:text-red-400 mb-4">Error: {error}</p>
+          <p className="mb-4 text-destructive">Error: {error}</p>
           <Button onClick={fetchCollections} variant="default">
             Retry
           </Button>

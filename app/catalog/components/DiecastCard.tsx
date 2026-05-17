@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
+import { tw } from "@/lib/theme/diecast-theme"
 import type { CatalogItem } from "../page"
 
 interface DiecastCardProps {
@@ -21,15 +22,12 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
       type="button"
       onClick={() => onClick(item)}
       className={cn(
-        "group relative flex w-full flex-col overflow-hidden rounded-2xl border bg-[#122030]",
+        "group relative flex w-full flex-col overflow-hidden rounded-2xl border bg-card",
         "transition-all duration-200 active:scale-[0.97]",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3c647b]",
-        item.totalQty > 0
-          ? "border-[#669a62]/40 hover:border-[#669a62]/80"
-          : "border-[#1d3344] hover:border-[#2a4555]"
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        item.totalQty > 0 ? tw.ownedBorder : "border-border hover:border-[#2a4555]"
       )}
     >
-      {/* Image area */}
       <div className="relative aspect-square w-full overflow-hidden bg-[#0e1c28]">
         {firstImage ? (
           <Image
@@ -59,16 +57,14 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
           </div>
         )}
 
-        {/* Owned chip — top left */}
         {item.totalQty > 0 && (
           <div className="absolute left-2 top-2">
-            <span className="rounded-full bg-[#669a62] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0b1822] shadow">
+            <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide shadow", tw.ownedBadge)}>
               Owned
             </span>
           </div>
         )}
 
-        {/* Scale overlay — bottom right */}
         {item.scale && (
           <div className="absolute bottom-2 right-2">
             <span className="rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm">
@@ -77,11 +73,10 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
           </div>
         )}
 
-        {/* Chase / Case — bottom left */}
         {(item.isChase || item.isCase) && (
           <div className="absolute bottom-2 left-2 flex gap-1">
             {item.isChase && (
-              <span className="rounded bg-[#FF3B30]/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
+              <span className="rounded bg-destructive/90 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
                 Chase
               </span>
             )}
@@ -94,15 +89,14 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
         )}
       </div>
 
-      {/* Info area */}
       <div className="flex flex-col gap-0.5 px-2.5 py-2">
-        <p className="line-clamp-2 text-left text-[11px] font-semibold leading-snug text-[#BFE9FF]">
+        <p className={cn("line-clamp-2 text-left text-[11px] font-semibold leading-snug", tw.textTitle)}>
           {item.name}
         </p>
         {item.item_no && (
-          <p className="text-left text-[10px] text-[#71717A]">{item.item_no}</p>
+          <p className="text-left text-[10px] text-muted-foreground">{item.item_no}</p>
         )}
-        <p className="text-left text-[10px] text-[#A1A1AA]">{item.brand_name}</p>
+        <p className="text-left text-[10px] text-muted-foreground">{item.brand_name}</p>
       </div>
     </button>
   )
