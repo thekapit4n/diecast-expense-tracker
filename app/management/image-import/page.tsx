@@ -5,15 +5,10 @@ import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { createClient } from "@/lib/supabase/client"
+import { BrandCombobox } from "@/components/ui/brand-combobox"
 import { CollectionCombobox, type CollectionOption } from "@/components/ui/collection-combobox"
+import { filterCollectionsBySearch } from "@/lib/collection-search"
 import { getBrandStorageSlug, resolveFolderKey } from "@/lib/collection-images"
 import { toast } from "sonner"
 import { ImagePlus, Loader2, Upload, X } from "lucide-react"
@@ -21,6 +16,7 @@ import { ImagePlus, Loader2, Upload, X } from "lucide-react"
 interface BrandOption {
   id: number
   name: string
+  type: string
 }
 
 interface UploadResult {
@@ -71,6 +67,21 @@ export default function ImageImportPage() {
     })
   }, [selectedBrand, itemNo, collectionNameInput])
 
+  const filteredCollections = useMemo(() => {
+    const filtered = filterCollectionsBySearch(collections, collectionNameInput)
+
+    if (!selectedCollectionId) {
+      return filtered
+    }
+
+    const selected = collections.find((collection) => collection.id === selectedCollectionId)
+    if (!selected || filtered.some((collection) => collection.id === selectedCollectionId)) {
+      return filtered
+    }
+
+    return [selected, ...filtered]
+  }, [collections, collectionNameInput, selectedCollectionId])
+
   const previewUrls = useMemo(
     () => selectedFiles.map((file) => URL.createObjectURL(file)),
     [selectedFiles]
@@ -88,7 +99,7 @@ export default function ImageImportPage() {
       try {
         const { data, error } = await supabase
           .from("tbl_master_brand")
-          .select("id, name")
+          .select("id, name, type")
           .eq("isactive", 1)
           .eq("type", "Diecast")
           .order("name")
@@ -330,28 +341,18 @@ export default function ImageImportPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <label className="text-sm font-medium">Brand</label>
-              <Select
+              <BrandCombobox
+                brands={brands}
                 value={selectedBrandId}
                 onValueChange={handleBrandChange}
-                disabled={isLoadingBrands}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={isLoadingBrands ? "Loading brands..." : "Select brand"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {brands.map((brand) => (
-                    <SelectItem key={brand.id} value={brand.id.toString()}>
-                      {brand.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder={isLoadingBrands ? "Loading brands..." : "Search or select brand..."}
+              />
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Model Name</label>
               <CollectionCombobox
-                collections={collections}
+                collections={filteredCollections}
                 value={selectedCollectionId}
                 onValueChange={handleCollectionSelect}
                 inputValue={collectionNameInput}
