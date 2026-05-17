@@ -65,7 +65,13 @@ function extractRemarkImageUrls(remark: string | null): string[] {
 /* -------------------------------------------------------------------------
  * Page (Server Component)
  * ---------------------------------------------------------------------- */
-export default async function CatalogPage() {
+export default async function CatalogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string; itemNo?: string }>
+}) {
+  const params = await searchParams
+  const initialSearch = (params.search ?? params.itemNo ?? "").trim()
   const supabase = await createServerSupabaseClient()
 
   const [
@@ -196,5 +202,12 @@ export default async function CatalogPage() {
   const defaultBrand =
     brands.find((b) => b.name.toLowerCase().includes("mini gt"))?.name ?? null
 
-  return <CatalogClient items={items} brands={brands} defaultBrand={defaultBrand} />
+  return (
+    <CatalogClient
+      items={items}
+      brands={brands}
+      defaultBrand={defaultBrand}
+      initialSearch={initialSearch}
+    />
+  )
 }

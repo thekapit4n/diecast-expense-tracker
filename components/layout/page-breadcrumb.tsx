@@ -27,7 +27,7 @@ const routeLabels: Record<string, string> = {
   add: "Add Purchase",
   list: "Purchase List",
   collection: "Collection",
-  "mini-gt": "Mini GT",
+  catalog: "Catalog",
   categories: "Categories",
   management: "Management",
   "image-import": "Image Import",

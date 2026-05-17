@@ -133,9 +133,9 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
     return normalizedBrand.includes("mini gt") && /^MGT\d{5}/.test(normalizedItemNo)
   }, [])
 
-  const openMiniGtModel = useCallback((itemNo: string) => {
+  const openInCatalog = useCallback((itemNo: string) => {
     const encodedItemNo = encodeURIComponent(itemNo.trim().toUpperCase())
-    window.location.href = `/collection/mini-gt?itemNo=${encodedItemNo}&open=1`
+    window.location.href = `/catalog?search=${encodedItemNo}`
   }, [])
 
   const restoreGridState = useCallback(() => {
@@ -337,8 +337,8 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
             type="button"
             size="sm"
             variant="outline"
-            aria-label="Open Mini GT collection"
-            onClick={() => openMiniGtModel(itemNo)}
+            aria-label="Open in catalog"
+            onClick={() => openInCatalog(itemNo)}
           >
             <LinkIcon className="h-4 w-4" />
           </Button>
@@ -721,7 +721,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         closeOnApply: true,
       },
     },
-  ], [isMiniGtSeries, openMiniGtModel])
+  ], [isMiniGtSeries, openInCatalog])
 
   const defaultColDef = useMemo(
     () => ({

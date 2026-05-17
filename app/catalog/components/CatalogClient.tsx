@@ -30,6 +30,7 @@ interface CatalogClientProps {
   items: CatalogItem[]
   brands: CatalogBrand[]
   defaultBrand: string | null
+  initialSearch?: string
 }
 
 const INITIAL_VISIBLE = 20
@@ -113,8 +114,13 @@ const NAV_GROUPS = [
   },
 ]
 
-export default function CatalogClient({ items, brands, defaultBrand }: CatalogClientProps) {
-  const [search, setSearch] = useState("")
+export default function CatalogClient({
+  items,
+  brands,
+  defaultBrand,
+  initialSearch = "",
+}: CatalogClientProps) {
+  const [search, setSearch] = useState(initialSearch)
   const [selectedBrand, setSelectedBrand] = useState<string | null>(defaultBrand)
   const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -129,6 +135,13 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
 
   /* Sentinel ref for infinite scroll */
   const sentinelRef = useRef<HTMLDivElement>(null)
+
+  /* Open search bar when arriving from collection/purchase list with ?search=MGT00001 */
+  useEffect(() => {
+    if (initialSearch) {
+      setSearchOpen(true)
+    }
+  }, [initialSearch])
 
   /* Keep sort in sync when brand tab changes (covers any code path that updates selectedBrand). */
   useEffect(() => {
