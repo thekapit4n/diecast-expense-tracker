@@ -21,13 +21,16 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
       type="button"
       onClick={() => onClick(item)}
       className={cn(
-        "group relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#27272A] bg-[#16181D]",
+        "group relative flex w-full flex-col overflow-hidden rounded-2xl border bg-[#122030]",
         "transition-all duration-200 active:scale-[0.97]",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]"
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3c647b]",
+        item.totalQty > 0
+          ? "border-[#669a62]/40 hover:border-[#669a62]/80"
+          : "border-[#1d3344] hover:border-[#2a4555]"
       )}
     >
       {/* Image area */}
-      <div className="relative aspect-square w-full overflow-hidden bg-[#0F1014]">
+      <div className="relative aspect-square w-full overflow-hidden bg-[#0e1c28]">
         {firstImage ? (
           <Image
             src={firstImage}
@@ -41,7 +44,7 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <svg
-              className="h-10 w-10 text-[#3F3F46]"
+              className="h-10 w-10 text-[#2a4555]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -59,7 +62,7 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
         {/* Owned chip — top left */}
         {item.totalQty > 0 && (
           <div className="absolute left-2 top-2">
-            <span className="rounded-full bg-[#3B82F6] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+            <span className="rounded-full bg-[#669a62] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0b1822] shadow">
               Owned
             </span>
           </div>
@@ -93,7 +96,7 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
 
       {/* Info area */}
       <div className="flex flex-col gap-0.5 px-2.5 py-2">
-        <p className="line-clamp-2 text-left text-[11px] font-semibold leading-snug text-[#F4F4F5]">
+        <p className="line-clamp-2 text-left text-[11px] font-semibold leading-snug text-[#BFE9FF]">
           {item.name}
         </p>
         {item.item_no && (

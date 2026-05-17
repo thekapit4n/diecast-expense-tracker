@@ -1,15 +1,13 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Separator } from "@/components/ui/separator"
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import {
   Search, SlidersHorizontal, X, Menu,
-  Home, Car, ShoppingCart, Settings2, List, PlusCircle, Tag, Store,
+  Home, Car, ShoppingCart, List, PlusCircle, Tag, Store,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import BrandTabs from "./BrandTabs"
@@ -17,6 +15,16 @@ import DiecastCard from "./DiecastCard"
 import CardDetailSheet from "./CardDetailSheet"
 import FilterSortSheet, { type FilterState } from "./FilterSortSheet"
 import type { CatalogBrand, CatalogItem } from "../page"
+
+/* Car-paint accent — teal-blue #3c647b, green #669a62 */
+const MG = {
+  accent: "#3c647b",
+  accentBg: "bg-[#3c647b]",
+  accentText: "text-[#3c647b]",
+  accentRing: "ring-[#3c647b]",
+  accentBgFaint: "bg-[#3c647b]/15",
+  accentBorder: "border-[#3c647b]",
+}
 
 interface CatalogClientProps {
   items: CatalogItem[]
@@ -27,20 +35,60 @@ interface CatalogClientProps {
 const INITIAL_VISIBLE = 20
 const LOAD_MORE_BATCH = 20
 
-/* Extract numeric series from item_no e.g. "MGT00123" → 123 */
-function getSeriesNumber(itemNo: string | null): number {
-  if (!itemNo) return 999999
-  const match = itemNo.match(/\d+/)
-  return match ? parseInt(match[0], 10) : 999999
+const nameCollator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true })
+
+function isMiniGTBrand(brand: string | null): boolean {
+  return brand?.trim().toLowerCase() === "mini gt"
 }
 
-/* ---- Navigation groups shown in the burger menu ---- */
+/** Always returns a new sorted array — never mutates the input. */
+function sortCatalogItems(
+  list: CatalogItem[],
+  selectedBrand: string | null,
+  filterBrands: string[],
+  userSort: FilterState["sort"]
+): CatalogItem[] {
+  const byNameAsc = (a: CatalogItem, b: CatalogItem) =>
+    nameCollator.compare(a.name.trim(), b.name.trim())
+  const byNameDesc = (a: CatalogItem, b: CatalogItem) =>
+    nameCollator.compare(b.name.trim(), a.name.trim())
+  const byItemNo = (a: CatalogItem, b: CatalogItem) => {
+    const aNo = a.item_no?.trim() ?? ""
+    const bNo = b.item_no?.trim() ?? ""
+    if (!aNo && !bNo) return byNameAsc(a, b)
+    if (!aNo) return 1
+    if (!bNo) return -1
+    const diff = nameCollator.compare(aNo, bNo)
+    return diff !== 0 ? diff : byNameAsc(a, b)
+  }
+
+  const viewingMiniGT =
+    isMiniGTBrand(selectedBrand) ||
+    (filterBrands.length === 1 && isMiniGTBrand(filterBrands[0]))
+
+  /* Non–Mini GT brands: always sort by name (ignore series_asc / stale sort values). */
+  if (!viewingMiniGT) {
+    return userSort === "name_desc"
+      ? [...list].sort(byNameDesc)
+      : [...list].sort(byNameAsc)
+  }
+
+  /* Mini GT: respect user sort choice. */
+  switch (userSort) {
+    case "name_desc":
+      return [...list].sort(byNameDesc)
+    case "name_asc":
+      return [...list].sort(byNameAsc)
+    case "series_asc":
+    default:
+      return [...list].sort(byItemNo)
+  }
+}
+
 const NAV_GROUPS = [
   {
     label: "Main",
-    items: [
-      { href: "/", label: "Dashboard", icon: Home },
-    ],
+    items: [{ href: "/", label: "Dashboard", icon: Home }],
   },
   {
     label: "Collection",
@@ -76,21 +124,29 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
   const [filters, setFilters] = useState<FilterState>({
     brands: [],
     scales: [],
-    sort: "series_asc",
+    sort: isMiniGTBrand(defaultBrand) ? "series_asc" : "name_asc",
   })
 
-  /* Unique scales derived from data */
+  /* Sentinel ref for infinite scroll */
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  /* Keep sort in sync when brand tab changes (covers any code path that updates selectedBrand). */
+  useEffect(() => {
+    const expected: FilterState["sort"] = isMiniGTBrand(selectedBrand)
+      ? "series_asc"
+      : "name_asc"
+    setFilters((prev) => (prev.sort === expected ? prev : { ...prev, sort: expected }))
+  }, [selectedBrand])
+
   const scales = useMemo(() => {
     const set = new Set<string>()
     items.forEach((item) => { if (item.scale) set.add(item.scale) })
     return Array.from(set).sort()
   }, [items])
 
-  /* Active filter count for badge indicator */
   const activeFilterCount =
-    filters.brands.length + filters.scales.length + (filters.sort !== "series_asc" ? 1 : 0)
+    filters.brands.length + filters.scales.length + (filters.sort !== "name_asc" ? 1 : 0)
 
-  /* Filtered + sorted list */
   const filtered = useMemo(() => {
     let list = [...items]
 
@@ -116,32 +172,38 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
       )
     }
 
-    switch (filters.sort) {
-      case "oldest":
-        list = list.reverse()
-        break
-      case "name_asc":
-        list = list.sort((a, b) => a.name.localeCompare(b.name))
-        break
-      case "name_desc":
-        list = list.sort((a, b) => b.name.localeCompare(a.name))
-        break
-      case "series_asc":
-        list = list.sort((a, b) => getSeriesNumber(a.item_no) - getSeriesNumber(b.item_no))
-        break
-      default:
-        break
-    }
-
-    return list
+    return sortCatalogItems(list, selectedBrand, filters.brands, filters.sort)
   }, [items, selectedBrand, filters, search])
 
   const visible = filtered.slice(0, visibleCount)
   const hasMore = visibleCount < filtered.length
 
+  /* Infinite scroll — observe sentinel at bottom of grid */
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setVisibleCount((c) => c + LOAD_MORE_BATCH)
+        }
+      },
+      { rootMargin: "200px" }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore])
+
+  /* Reset visible count + apply sensible default sort when brand tab changes */
   function handleBrandChange(brand: string | null) {
     setSelectedBrand(brand)
     setVisibleCount(INITIAL_VISIBLE)
+    setFilters((prev) => ({
+      ...prev,
+      sort: isMiniGTBrand(brand) ? "series_asc" : "name_asc",
+    }))
   }
   function handleFiltersChange(next: FilterState) {
     setFilters(next)
@@ -153,25 +215,19 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
   }
 
   return (
-    /*
-     * Max-width keeps the layout centered on desktop while staying
-     * full-bleed on mobile — no sidebar, no container padding.
-     */
-    <div className="mx-auto flex min-h-dvh max-w-2xl flex-col bg-[#0B0B0C] lg:max-w-none">
+    <div className="mx-auto flex min-h-dvh max-w-2xl flex-col bg-[#0b1822] lg:max-w-none">
 
       {/* ------------------------------------------------------------------ */}
       {/* Sticky Header                                                        */}
       {/* ------------------------------------------------------------------ */}
-      <header className="sticky top-0 z-30 border-b border-[#27272A] bg-[#0B0B0C]/95 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-[#1d3344] bg-[#0b1822]/95 backdrop-blur-md">
         <div className="flex items-center justify-between px-4 py-3">
 
-          {/* Title / stats */}
           <div className={cn("transition-all", searchOpen ? "hidden" : "flex items-center gap-2")}>
-            {/* Burger menu */}
             <button
               type="button"
               onClick={() => setNavOpen(true)}
-              className="rounded-full p-1.5 text-[#A1A1AA] transition hover:bg-[#16181D] hover:text-[#F4F4F5]"
+              className="rounded-full p-1.5 text-[#A1A1AA] transition hover:bg-[#122030] hover:text-[#F4F4F5]"
               aria-label="Open menu"
             >
               <Menu className="h-[18px] w-[18px]" />
@@ -185,7 +241,6 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
             </div>
           </div>
 
-          {/* Inline search input */}
           {searchOpen && (
             <div className="flex flex-1 items-center gap-2">
               <div className="relative flex-1">
@@ -195,20 +250,19 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
                   value={search}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   placeholder="Search models, brands, codes..."
-                  className="h-9 border-[#27272A] bg-[#16181D] pl-8 pr-4 text-sm text-[#F4F4F5] placeholder:text-[#52525B] focus-visible:ring-[#3B82F6]"
+                  className="h-9 border-[#1d3344] bg-[#122030] pl-8 pr-4 text-sm text-[#F4F4F5] placeholder:text-[#52525B] focus-visible:ring-[#3c647b]"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => { setSearchOpen(false); handleSearchChange("") }}
-                className="rounded-full p-1.5 text-[#A1A1AA] hover:text-[#F4F4F5]"
+                className="rounded-full p-1.5 text-[#A1A1AA] hover:text-[#F4F4F5] hover:bg-[#122030]"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
           )}
 
-          {/* Action icons */}
           {!searchOpen && (
             <div className="flex items-center gap-0.5">
               <button
@@ -222,13 +276,16 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
                 type="button"
                 onClick={() => setFilterOpen(true)}
                 className={cn(
-                  "relative rounded-full p-2 transition hover:bg-[#16181D]",
-                  activeFilterCount > 0 ? "text-[#FF3B30]" : "text-[#A1A1AA] hover:text-[#F4F4F5]"
+                  "relative rounded-full p-2 transition hover:bg-[#122030]",
+                  activeFilterCount > 0 ? MG.accentText : "text-[#A1A1AA] hover:text-[#F4F4F5]"
                 )}
               >
                 <SlidersHorizontal className="h-[18px] w-[18px]" />
                 {activeFilterCount > 0 && (
-                  <span className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#FF3B30] text-[8px] font-bold text-white">
+                  <span
+                    className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-bold text-white"
+                    style={{ backgroundColor: MG.accent }}
+                  >
                     {activeFilterCount}
                   </span>
                 )}
@@ -237,15 +294,12 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
           )}
         </div>
 
-        {/* Brand tabs */}
         <div className="pb-3 pt-0.5">
           <BrandTabs brands={brands} selected={selectedBrand} onChange={handleBrandChange} />
         </div>
       </header>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Results summary bar                                                 */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Results bar */}
       <div className="flex items-center justify-between px-4 py-2.5">
         <p className="text-xs text-[#52525B]">
           {filtered.length} {filtered.length === 1 ? "result" : "results"}
@@ -259,11 +313,11 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
           <button
             type="button"
             onClick={() => {
-              handleFiltersChange({ brands: [], scales: [], sort: "newest" })
+              handleFiltersChange({ brands: [], scales: [], sort: "name_asc" })
               handleSearchChange("")
               setSelectedBrand(null)
             }}
-            className="text-xs text-[#FF3B30] hover:underline"
+            className={cn("text-xs hover:underline", MG.accentText)}
           >
             Clear all
           </button>
@@ -278,9 +332,9 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="flex flex-col gap-2">
-                <Skeleton className="aspect-square w-full rounded-2xl bg-[#16181D]" />
-                <Skeleton className="h-3 w-3/4 rounded bg-[#16181D]" />
-                <Skeleton className="h-3 w-1/2 rounded bg-[#16181D]" />
+                <Skeleton className="aspect-square w-full rounded-2xl bg-[#122030]" />
+                <Skeleton className="h-3 w-3/4 rounded bg-[#122030]" />
+                <Skeleton className="h-3 w-1/2 rounded bg-[#122030]" />
               </div>
             ))}
           </div>
@@ -298,25 +352,20 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
               ))}
             </div>
 
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="h-10" />
+
+            {/* Subtle loading indicator */}
             {hasMore && (
-              <div className="mt-6 flex justify-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setVisibleCount((c) => c + LOAD_MORE_BATCH)}
-                  className="border-[#27272A] bg-transparent text-[#A1A1AA] hover:border-[#3B82F6] hover:bg-[#16181D] hover:text-[#F4F4F5]"
-                >
-                  Load more ({filtered.length - visibleCount} remaining)
-                </Button>
+              <div className="flex justify-center py-2">
+                <span className="text-xs text-[#2a4555]">Loading more…</span>
               </div>
             )}
           </>
         )}
       </main>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Drawers                                                             */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Drawers */}
       <CardDetailSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
       <FilterSortSheet
         open={filterOpen}
@@ -331,9 +380,24 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
       <Sheet open={navOpen} onOpenChange={setNavOpen}>
         <SheetContent
           side="left"
-          className="w-72 border-[#27272A] bg-[#16181D] p-0 text-[#F4F4F5]"
+          showCloseButton={false}
+          className="w-72 border-[#1d3344] bg-[#0e1c28] p-0 text-[#F4F4F5]"
         >
-          <SheetHeader className="border-b border-[#27272A] px-5 py-4">
+          <SheetClose
+            className="group absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-md border transition-colors hover:border-[rgba(255,255,255,0.12)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5EEAD4]/40"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.03)",
+              borderColor: "rgba(255,255,255,0.08)",
+            }}
+          >
+            <X className="h-4 w-4 text-[#94A3B8] transition-colors group-hover:text-[#B6FFF2]" />
+            <span className="sr-only">Close</span>
+          </SheetClose>
+
+          <SheetHeader
+            className="border-b px-5 py-4 pr-14"
+            style={{ borderColor: "rgba(125,211,252,0.06)" }}
+          >
             <SheetTitle className="text-left text-base font-bold text-[#F4F4F5]">
               Diecast Tracker
             </SheetTitle>
@@ -342,26 +406,36 @@ export default function CatalogClient({ items, brands, defaultBrand }: CatalogCl
           <nav className="flex flex-col gap-1 overflow-y-auto px-3 py-3">
             {NAV_GROUPS.map((group) => (
               <div key={group.label}>
-                <p className="mb-1 mt-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-[#52525B]">
+                <p
+                  className="mb-1 mt-2 px-2 text-[10px] font-semibold uppercase text-[#4B6B88]"
+                  style={{ letterSpacing: "0.14em" }}
+                >
                   {group.label}
                 </p>
-                {group.items.map((item) => {
-                  const Icon = item.icon
-                  const isCurrent = item.href === "/catalog"
+                {group.items.map((navItem) => {
+                  const Icon = navItem.icon
+                  const isCurrent = navItem.href === "/catalog"
                   return (
                     <Link
-                      key={item.href}
-                      href={item.href}
+                      key={navItem.href}
+                      href={navItem.href}
                       onClick={() => setNavOpen(false)}
                       className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                        "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                         isCurrent
-                          ? "bg-[#FF3B30]/10 font-semibold text-[#FF3B30]"
-                          : "text-[#A1A1AA] hover:bg-[#27272A] hover:text-[#F4F4F5]"
+                          ? "bg-[rgba(45,212,191,0.08)] font-semibold text-[#99F6E4]"
+                          : "text-[#A1A1AA] hover:bg-[rgba(255,255,255,0.03)] hover:text-[#B6FFF2]"
                       )}
                     >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {item.label}
+                      <Icon
+                        className={cn(
+                          "h-4 w-4 shrink-0 transition-colors",
+                          isCurrent
+                            ? "text-[#5EEAD4] drop-shadow-[0_0_8px_rgba(45,212,191,0.25)]"
+                            : "text-[#94A3B8] group-hover:text-[#B6FFF2]"
+                        )}
+                      />
+                      {navItem.label}
                     </Link>
                   )
                 })}

@@ -77,7 +77,7 @@ export default async function CatalogPage() {
     supabase
       .from("tbl_collection")
       .select("id, name, item_no, scale, remark, brand_id, tbl_master_brand(name)")
-      .order("created_at", { ascending: false }),
+      .order("name", { ascending: true }),
 
     supabase
       .from("tbl_master_brand")

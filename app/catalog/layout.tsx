@@ -14,7 +14,7 @@ export const viewport: Viewport = {
 
 export default function CatalogLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh bg-[#0B0B0C] text-[#F4F4F5]">
+    <div className="min-h-dvh bg-[#0b1822] text-[#F4F4F5]">
       {children}
     </div>
   )

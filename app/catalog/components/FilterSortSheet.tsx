@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import type { CatalogBrand } from "../page"
 
-export type SortOption = "newest" | "oldest" | "name_asc" | "name_desc" | "series_asc"
+export type SortOption = "name_asc" | "name_desc" | "series_asc"
 
 export interface FilterState {
   brands: string[]
@@ -25,8 +25,6 @@ interface FilterSortSheetProps {
 }
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: "newest", label: "Newest First" },
-  { value: "oldest", label: "Oldest First" },
   { value: "name_asc", label: "Name A–Z" },
   { value: "name_desc", label: "Name Z–A" },
   { value: "series_asc", label: "Series No." },
@@ -62,7 +60,7 @@ export default function FilterSortSheet({
   }
 
   function handleReset() {
-    const reset: FilterState = { brands: [], scales: [], sort: "series_asc" }
+    const reset: FilterState = { brands: [], scales: [], sort: "name_asc" }
     setDraft(reset)
     onChange(reset)
     onClose()
@@ -83,7 +81,7 @@ export default function FilterSortSheet({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="bottom"
-        className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-[#27272A] bg-[#16181D] px-0 pb-8 text-[#F4F4F5]"
+        className="max-h-[85dvh] overflow-y-auto rounded-t-2xl border-[#1d3344] bg-[#0e1c28] px-0 pb-8 text-[#F4F4F5]"
       >
         <SheetHeader className="px-5 pb-2 pt-4">
           <SheetTitle className="text-left text-base font-bold text-[#F4F4F5]">
@@ -91,7 +89,7 @@ export default function FilterSortSheet({
           </SheetTitle>
         </SheetHeader>
 
-        <Separator className="bg-[#27272A]" />
+        <Separator className="bg-[#1d3344]" />
 
         {/* Sort */}
         <div className="px-5 pt-4">
@@ -105,8 +103,8 @@ export default function FilterSortSheet({
                 className={cn(
                   "rounded-full px-4 py-1.5 text-xs font-semibold transition-all",
                   draft.sort === opt.value
-                    ? "bg-[#3B82F6] text-white"
-                    : "border border-[#27272A] bg-transparent text-[#A1A1AA] hover:border-[#3B82F6]"
+                    ? "bg-[#3c647b] text-white"
+                    : "border border-[#1d3344] bg-transparent text-[#A1A1AA] hover:border-[#3c647b]"
                 )}
               >
                 {opt.label}
@@ -128,8 +126,8 @@ export default function FilterSortSheet({
                   className={cn(
                     "rounded-full px-4 py-1.5 text-xs font-semibold transition-all",
                     draft.brands.includes(brand.name)
-                      ? "bg-[#FF3B30] text-white"
-                      : "border border-[#27272A] bg-transparent text-[#A1A1AA] hover:border-[#FF3B30]"
+                      ? "bg-[#3c647b] text-white"
+                      : "border border-[#1d3344] bg-transparent text-[#A1A1AA] hover:border-[#3c647b]"
                   )}
                 >
                   {brand.name}
@@ -152,8 +150,8 @@ export default function FilterSortSheet({
                   className={cn(
                     "rounded-full px-4 py-1.5 text-xs font-semibold transition-all",
                     draft.scales.includes(scale)
-                      ? "bg-[#3B82F6] text-white"
-                      : "border border-[#27272A] bg-transparent text-[#A1A1AA] hover:border-[#3B82F6]"
+                      ? "bg-[#3c647b] text-white"
+                      : "border border-[#1d3344] bg-transparent text-[#A1A1AA] hover:border-[#3c647b]"
                   )}
                 >
                   {scale}
@@ -163,19 +161,19 @@ export default function FilterSortSheet({
           </div>
         )}
 
-        <Separator className="mx-5 mt-6 bg-[#27272A]" />
+        <Separator className="mx-5 mt-6 bg-[#1d3344]" />
 
         {/* Actions */}
         <div className="flex gap-3 px-5 pt-4">
           <Button
             variant="outline"
-            className="flex-1 border-[#27272A] bg-transparent text-[#A1A1AA] hover:bg-[#27272A] hover:text-[#F4F4F5]"
+            className="flex-1 border-[#1d3344] bg-transparent text-[#A1A1AA] hover:bg-[#1d3344] hover:text-[#F4F4F5]"
             onClick={handleReset}
           >
             Reset
           </Button>
           <Button
-            className="flex-1 bg-[#FF3B30] text-white hover:bg-[#E0352B]"
+            className="flex-1 bg-[#3c647b] text-white hover:bg-[#4e7a93] font-semibold"
             onClick={handleApply}
           >
             Apply
