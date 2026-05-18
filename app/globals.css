@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@source "../lib/**/*.{ts,tsx}";
+
 @custom-variant dark (&:is(.dark *));
 
 /* Sync with lib/theme/diecast-theme.ts */
@@ -8,7 +10,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-owned: var(--owned);
-  --color-title-highlight: var(--title-highlight);
+  --color-title-highlight: #bfe9ff;
   --color-nav-active: var(--nav-active);
   --color-nav-active-foreground: var(--nav-active-foreground);
   --color-surface-elevated: var(--surface-elevated);
@@ -131,6 +133,36 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Always emitted — Tailwind does not generate text-title-highlight from @theme alone */
+.text-title-highlight {
+  color: #bfe9ff;
+}
+
+/* Catalog infinite-scroll list — slim scrollbar aligned to app palette */
+.scrollbar-catalog {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) var(--card);
+}
+
+.scrollbar-catalog::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollbar-catalog::-webkit-scrollbar-track {
+  background: var(--card);
+  border-radius: 9999px;
+}
+
+.scrollbar-catalog::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+}
+
+.scrollbar-catalog::-webkit-scrollbar-thumb:hover {
+  background: #4e7a93;
 }
 
 /* AG Grid — sync with lib/theme/diecast-theme.ts */
@@ -539,4 +571,63 @@
 /* Header filter/menu icon spacing */
 .ag-theme-quartz .ag-header-cell-comp-wrapper {
   gap: 2px;
+}
+
+/* List pages: purchase, collection, management — main text #bfe9ff */
+.ag-theme-quartz.ag-grid-main-text {
+  --ag-foreground-color: var(--title-highlight);
+  --ag-data-color: var(--title-highlight);
+  --ag-header-foreground-color: var(--title-highlight);
+  --ag-icon-font-color: var(--title-highlight);
+}
+
+.ag-theme-quartz.ag-grid-main-text .ag-cell,
+.ag-theme-quartz.ag-grid-main-text .ag-header-cell,
+.ag-theme-quartz.ag-grid-main-text .ag-header-cell-label,
+.ag-theme-quartz.ag-grid-main-text .ag-header-icon,
+.ag-theme-quartz.ag-grid-main-text .ag-overlay-loading-wrapper,
+.ag-theme-quartz.ag-grid-main-text .ag-overlay-no-rows-wrapper {
+  color: var(--title-highlight);
+}
+
+.ag-theme-quartz.ag-grid-main-text .ag-header-cell .ag-icon,
+.ag-theme-quartz.ag-grid-main-text .ag-header-cell-menu-button,
+.ag-theme-quartz.ag-grid-main-text .ag-header-cell-filter-button {
+  color: var(--title-highlight);
+}
+
+.ag-theme-quartz.ag-grid-main-text .ag-paging-panel,
+.ag-theme-quartz.ag-grid-main-text .ag-paging-panel .ag-picker-field-wrapper,
+.ag-theme-quartz.ag-grid-main-text .ag-paging-panel .ag-wrapper,
+.ag-theme-quartz.ag-grid-main-text .ag-paging-panel select,
+.ag-theme-quartz.ag-grid-main-text .ag-paging-button:not(.ag-disabled) {
+  color: var(--title-highlight);
+}
+
+.ag-theme-quartz.ag-grid-main-text .ag-menu,
+.ag-theme-quartz.ag-grid-main-text .ag-popup-child,
+.ag-theme-quartz.ag-grid-main-text .ag-filter-body,
+.ag-theme-quartz.ag-grid-main-text .ag-filter-body-wrapper,
+.ag-theme-quartz.ag-grid-main-text .ag-simple-filter-body-wrapper,
+.ag-theme-quartz.ag-grid-main-text .ag-filter-apply-panel,
+.ag-theme-quartz.ag-grid-main-text .ag-menu-option-text,
+.ag-theme-quartz.ag-grid-main-text .ag-label,
+.ag-theme-quartz.ag-grid-main-text .ag-radio-button-label,
+.ag-theme-quartz.ag-grid-main-text .ag-filter-condition,
+.ag-theme-quartz.ag-grid-main-text .ag-filter-condition-operator-or,
+.ag-theme-quartz.ag-grid-main-text .ag-filter-condition-operator-and {
+  color: var(--title-highlight);
+}
+
+.ag-theme-quartz.ag-grid-main-text .ag-menu .ag-icon,
+.ag-theme-quartz.ag-grid-main-text .ag-menu-option-icon .ag-icon,
+.ag-theme-quartz.ag-grid-main-text .ag-picker-field-display,
+.ag-theme-quartz.ag-grid-main-text .ag-picker-field-icon {
+  color: var(--title-highlight);
+}
+
+.ag-theme-quartz.ag-grid-main-text input[class^="ag-"],
+.ag-theme-quartz.ag-grid-main-text textarea[class^="ag-"],
+.ag-theme-quartz.ag-grid-main-text select[class^="ag-"] {
+  color: var(--title-highlight);
 }

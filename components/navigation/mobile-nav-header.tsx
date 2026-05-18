@@ -2,6 +2,7 @@
 
 import { Menu } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { tw } from "@/lib/theme/diecast-theme"
 
 interface MobileNavHeaderProps {
   title: string
@@ -35,7 +36,7 @@ export function MobileNavHeader({
           <Menu className="h-5 w-5" />
         </button>
         <div>
-          <h1 className="text-base font-bold tracking-tight text-foreground">{title}</h1>
+          <h1 className={cn("text-base font-bold tracking-tight", tw.textTitle)}>{title}</h1>
           {subtitle && <p className="text-[11px] text-muted-foreground">{subtitle}</p>}
         </div>
       </div>

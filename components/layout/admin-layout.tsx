@@ -40,7 +40,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const pageTitle = getPageTitle(pathname)
 
   if (isCatalogPage) {
-    return <>{children}</>
+    return (
+      <div className="flex h-screen overflow-hidden bg-background">
+        <Sidebar isCollapsed={isCollapsed} onToggle={() => setIsCollapsed(!isCollapsed)} />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+      </div>
+    )
   }
 
   return (

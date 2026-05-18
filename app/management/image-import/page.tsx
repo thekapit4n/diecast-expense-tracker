@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
+import { tw } from "@/lib/theme/diecast-theme"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -321,7 +322,7 @@ export default function ImageImportPage() {
       <PageBreadcrumb />
 
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Collection Image Import</h1>
+        <h1 className={tw.pageHeading}>Collection Image Import</h1>
         <p className="text-muted-foreground">
           Upload photos for any brand or import Mini GT images from the official product page.
           Images are stored in Supabase and linked by item number, or by model name when no item
@@ -331,7 +332,7 @@ export default function ImageImportPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Upload Collection Images</CardTitle>
+          <CardTitle className={tw.cardHeading}>Upload Collection Images</CardTitle>
           <CardDescription>
             Select a brand and model. Use item number when available; otherwise the model name is
             used as the storage folder (e.g. Tarmac or Inno64 models without a product code).
@@ -490,7 +491,7 @@ export default function ImageImportPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Mini GT — Import From Product URL</CardTitle>
+          <CardTitle className={tw.cardHeading}>Mini GT — Import From Product URL</CardTitle>
           <CardDescription>
             Existing Mini GT flow: scrape images from minigt.tsm-models.com. Series format must be
             like MGT00009.

@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
+import { tw } from "@/lib/theme/diecast-theme"
 
 // Sample categories - will be replaced with real data from Supabase later
 const categories = [
@@ -113,7 +114,7 @@ export default function CategoriesPage() {
                       {category.itemCount} items ({percentage.toFixed(1)}%)
                     </span>
                   </div>
-                  <div className="w-full bg-secondary rounded-full h-2">
+                  <div className={tw.progressTrack}>
                     <div
                       className="h-2 rounded-full transition-all"
                       style={{

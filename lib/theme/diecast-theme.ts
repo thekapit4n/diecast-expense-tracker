@@ -77,7 +77,10 @@ export const tw = {
   textSecondary: "text-muted-foreground",
   textMuted: "text-[#71717A]",
   textFaint: "text-[#52525B]",
-  textTitle: "text-[#BFE9FF]",
+  textTitle: "text-title-highlight",
+  pageHeading: "text-3xl font-bold tracking-tight text-title-highlight",
+  sectionHeading: "text-lg font-semibold text-title-highlight",
+  cardHeading: "text-title-highlight",
   textSection: "text-[#4B6B88]",
   accent: "text-primary",
   accentBg: "bg-primary",
@@ -89,7 +92,12 @@ export const tw = {
   ownedBadge: "bg-[#669a62] text-[#0b1822]",
   pillActive: "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(60,100,123,0.55)]",
   pillInactive:
-    "border border-border bg-card text-muted-foreground hover:border-primary hover:text-foreground",
+    "border border-border bg-card text-title-highlight hover:border-primary hover:text-title-highlight",
+  progressTrack: "h-2 w-full rounded-full border border-border bg-background",
+  scrollbarDark:
+    "[scrollbar-width:thin] [scrollbar-color:var(--primary)_var(--card)] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-card [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border [&::-webkit-scrollbar-thumb]:border-border [&::-webkit-scrollbar-thumb]:bg-primary hover:[&::-webkit-scrollbar-thumb]:bg-[#4e7a93]",
+  scrollbarCatalog: "scrollbar-catalog",
+  navItemText: "text-title-highlight",
   input:
     "border-border bg-card text-foreground placeholder:text-[#52525B] focus-visible:ring-primary",
   sheet: "border-border bg-[#0e1c28] text-foreground",

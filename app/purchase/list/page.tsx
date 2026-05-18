@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { RefreshCw, Plus } from "lucide-react"
 import { PurchaseGrid, PurchaseGridRef } from "@/components/purchase/purchase-grid"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
+import { tw } from "@/lib/theme/diecast-theme"
 import { useRouter } from "next/navigation"
 
 export default function PurchaseListPage() {
@@ -25,7 +26,7 @@ export default function PurchaseListPage() {
       
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Purchase List</h1>
+          <h1 className={tw.pageHeading}>Purchase List</h1>
           <p className="text-muted-foreground">
             View and manage all diecast purchases
           </p>

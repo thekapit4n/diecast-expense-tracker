@@ -6,6 +6,7 @@ import { RefreshCw, Plus } from "lucide-react"
 import { ShopsGrid, ShopsGridRef, type ShopItem } from "@/components/management/shops-grid"
 import { ShopFormModal } from "@/components/management/shop-form-modal"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
+import { tw } from "@/lib/theme/diecast-theme"
 
 export default function ShopsPage() {
   const gridRef = useRef<ShopsGridRef>(null)
@@ -33,7 +34,7 @@ export default function ShopsPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Shop Management</h1>
+          <h1 className={tw.pageHeading}>Shop Management</h1>
           <p className="text-muted-foreground">
             View and manage shop information
           </p>

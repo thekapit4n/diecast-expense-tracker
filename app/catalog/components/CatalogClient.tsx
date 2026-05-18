@@ -104,6 +104,7 @@ export default function CatalogClient({
 
   /* Sentinel ref for infinite scroll */
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLElement | null>(null)
 
   /* Open search bar when arriving from collection/purchase list with ?search=MGT00001 */
   useEffect(() => {
@@ -170,7 +171,7 @@ export default function CatalogClient({
           setVisibleCount((c) => c + LOAD_MORE_BATCH)
         }
       },
-      { rootMargin: "200px" }
+      { root: scrollRef.current, rootMargin: "200px" }
     )
 
     observer.observe(el)
@@ -205,7 +206,7 @@ export default function CatalogClient({
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-2xl flex-col bg-background lg:max-w-none">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col bg-background lg:max-w-none">
 
       {/* ------------------------------------------------------------------ */}
       {/* Sticky Header                                                        */}
@@ -223,7 +224,7 @@ export default function CatalogClient({
               <Menu className="h-[18px] w-[18px]" />
             </button>
             <div>
-              <h1 className="text-base font-bold tracking-tight text-foreground">Diecast Catalog</h1>
+              <h1 className={cn("text-base font-bold tracking-tight", tw.textTitle)}>Diecast Catalog</h1>
               <p className="text-[11px] text-muted-foreground">
                 {items.length} {items.length === 1 ? "Model" : "Models"} · {brands.length}{" "}
                 {brands.length === 1 ? "Brand" : "Brands"}
@@ -334,7 +335,10 @@ export default function CatalogClient({
       {/* ------------------------------------------------------------------ */}
       {/* Grid                                                                */}
       {/* ------------------------------------------------------------------ */}
-      <main className="flex-1 px-3 pb-10">
+      <main
+        ref={scrollRef}
+        className={cn("min-h-0 flex-1 overflow-y-auto px-3 pb-10", tw.scrollbarCatalog)}
+      >
         {items.length === 0 ? (
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {Array.from({ length: 10 }).map((_, i) => (
@@ -362,10 +366,10 @@ export default function CatalogClient({
             {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="h-10" />
 
-            {/* Subtle loading indicator */}
             {hasMore && (
-              <div className="flex justify-center py-2">
-                <span className="text-xs text-muted-foreground/60">Loading more…</span>
+              <div className="flex items-center justify-center gap-2 py-4">
+                <Loader2 className={cn("h-3.5 w-3.5 animate-spin text-primary")} />
+                <span className={cn("text-[11px] font-medium", tw.textTitle)}>Loading more…</span>
               </div>
             )}
           </>

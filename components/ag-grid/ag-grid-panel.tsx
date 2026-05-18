@@ -24,7 +24,10 @@ export function AgGridPanel({ children, className }: AgGridPanelProps) {
   return (
     <div
       ref={containerRef}
-      className={cn("ag-theme-quartz w-full h-[calc(100vh-12rem)]", className)}
+      className={cn(
+        "ag-theme-quartz ag-grid-main-text w-full h-[calc(100vh-12rem)]",
+        className
+      )}
     >
       {children(popupParent)}
     </div>

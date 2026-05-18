@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { RefreshCw } from "lucide-react"
 import { BrandsGrid, BrandsGridRef } from "@/components/management/brands-grid"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
+import { tw } from "@/lib/theme/diecast-theme"
 
 export default function BrandsPage() {
   const brandsGridRef = useRef<BrandsGridRef>(null)
@@ -19,7 +20,7 @@ export default function BrandsPage() {
       
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Brand Management</h1>
+          <h1 className={tw.pageHeading}>Brand Management</h1>
           <p className="text-muted-foreground">
             View and manage all diecast brands
           </p>

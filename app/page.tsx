@@ -9,6 +9,7 @@ import { formatDistanceToNow } from "date-fns"
 import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { tw } from "@/lib/theme/diecast-theme"
 
 interface StatData {
   title: string
@@ -413,7 +414,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className={cn("text-3xl font-bold tracking-tight", tw.textTitle)}>Dashboard</h1>
           <p className="text-muted-foreground">
             Overview of your diecast collection expenses
           </p>
@@ -436,7 +437,7 @@ export default function DashboardPage() {
           return (
             <Card key={stat.title}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className={cn("text-sm font-medium", tw.textTitle)}>
                   {stat.title}
                 </CardTitle>
                 {stat.isLoading ? (
@@ -454,7 +455,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <div className={cn("text-2xl font-bold", tw.textTitle)}>{stat.value}</div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {stat.description}
                     </p>
@@ -472,7 +473,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Recent Purchases</CardTitle>
+            <CardTitle className={tw.textTitle}>Recent Purchases</CardTitle>
             <CardDescription>
               Your latest diecast acquisitions
             </CardDescription>
@@ -502,7 +503,7 @@ export default function DashboardPage() {
                   return (
                     <div key={purchase.id} className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium">{purchase.collection_name}</p>
+                        <p className={cn("text-sm font-medium", tw.textTitle)}>{purchase.collection_name}</p>
                         <p className="text-xs text-muted-foreground">
                           {purchase.packaging_type 
                             ? purchase.packaging_type.split('_').map(word => 
@@ -512,7 +513,7 @@ export default function DashboardPage() {
                           } • {displayDate}
                         </p>
                       </div>
-                      <p className="text-sm font-semibold">RM {purchase.total_price.toFixed(2)}</p>
+                      <p className={cn("text-sm font-semibold", tw.textTitle)}>RM {purchase.total_price.toFixed(2)}</p>
                     </div>
                   )
                 })}
@@ -523,7 +524,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Spending by Brand</CardTitle>
+            <CardTitle className={tw.textTitle}>Spending by Brand</CardTitle>
             <CardDescription>
               Total expenses tracked by brand
             </CardDescription>
@@ -546,24 +547,24 @@ export default function DashboardPage() {
                 <p className="text-sm">No brand data yet</p>
               </div>
             ) : (
-              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+              <div className={cn("space-y-4 max-h-[400px] overflow-y-auto pr-2", tw.scrollbarDark)}>
                 {topBrands.map((brand) => (
                   <div key={brand.brand_id} className="flex items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{brand.brand_name}</p>
+                      <p className={cn("text-sm font-medium truncate", tw.textTitle)}>{brand.brand_name}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 bg-secondary rounded-full h-2">
-                          <div 
-                            className="bg-primary h-2 rounded-full transition-all" 
+                        <div className={cn("flex-1", tw.progressTrack)}>
+                          <div
+                            className="bg-primary h-2 rounded-full transition-all"
                             style={{ width: `${Math.min(brand.percentage, 100)}%` }}
-                          ></div>
+                          />
                         </div>
                         <span className="text-xs text-muted-foreground min-w-[40px] text-right">
                           {brand.percentage.toFixed(1)}%
                         </span>
                       </div>
                     </div>
-                    <p className="text-sm font-semibold whitespace-nowrap">RM {brand.total_spent.toFixed(2)}</p>
+                    <p className={cn("text-sm font-semibold whitespace-nowrap", tw.textTitle)}>RM {brand.total_spent.toFixed(2)}</p>
                   </div>
                 ))}
               </div>

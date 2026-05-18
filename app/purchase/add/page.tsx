@@ -35,6 +35,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { cn, formatDateForDatabase } from "@/lib/utils"
+import { tw } from "@/lib/theme/diecast-theme"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { BrandCombobox } from "@/components/ui/brand-combobox"
 import { CollectionCombobox, type CollectionOption } from "@/components/ui/collection-combobox"
@@ -578,7 +579,7 @@ export default function AddPurchasePage() {
       <PageBreadcrumb />
       
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Add New Purchase</h1>
+        <h1 className={tw.pageHeading}>Add New Purchase</h1>
         <p className="text-muted-foreground">
           Record one or more purchases for a diecast collection
         </p>
@@ -586,7 +587,7 @@ export default function AddPurchasePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Purchase Details</CardTitle>
+          <CardTitle className={tw.cardHeading}>Purchase Details</CardTitle>
           <CardDescription>
             Fill in the information about your diecast purchase(s)
           </CardDescription>
@@ -596,7 +597,7 @@ export default function AddPurchasePage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Collection Information */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Collection Information</h3>
+                <h3 className={tw.sectionHeading}>Collection Information</h3>
                 
                 <div className="space-y-4">
                   <FormField
@@ -804,7 +805,7 @@ export default function AddPurchasePage() {
               {/* Purchase Details Array */}
               <div className="space-y-6 border-t pt-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Purchase Details</h3>
+                  <h3 className={tw.sectionHeading}>Purchase Details</h3>
                   <Button
                     type="button"
                     variant="outline"
@@ -838,7 +839,7 @@ export default function AddPurchasePage() {
                   <Card key={field.id} className="relative">
                     <CardHeader className="pb-4">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-base">Purchase #{index + 1}</CardTitle>
+                        <CardTitle className={cn("text-base", tw.cardHeading)}>Purchase #{index + 1}</CardTitle>
                         <div className="flex gap-2">
                           <Button
                             type="button"
@@ -1483,7 +1484,7 @@ export default function AddPurchasePage() {
                   <div className="flex justify-end">
                     <div className="rounded-md border border-input bg-muted p-4">
                       <div className="text-sm text-muted-foreground">Grand Total</div>
-                      <div className="text-2xl font-bold">RM {grandTotal.toFixed(2)}</div>
+                      <div className={cn("text-2xl font-bold", tw.textTitle)}>RM {grandTotal.toFixed(2)}</div>
                     </div>
                   </div>
                 )}

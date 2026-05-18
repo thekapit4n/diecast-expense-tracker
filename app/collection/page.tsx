@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CollectionGrid } from "@/components/collection/collection-grid"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
+import { tw } from "@/lib/theme/diecast-theme"
 
 export default function CollectionPage() {
   return (
@@ -8,7 +9,7 @@ export default function CollectionPage() {
       <PageBreadcrumb />
 
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">My Collection</h1>
+        <h1 className={tw.pageHeading}>My Collection</h1>
         <p className="text-muted-foreground">
           View and manage your diecast collection
         </p>
@@ -16,7 +17,7 @@ export default function CollectionPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Collection Items</CardTitle>
+          <CardTitle className={tw.cardHeading}>Collection Items</CardTitle>
           <CardDescription>
             Complete list of your diecast collection with sorting, filtering, and pagination
           </CardDescription>

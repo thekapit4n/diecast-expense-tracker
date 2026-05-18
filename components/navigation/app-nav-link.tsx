@@ -4,6 +4,7 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { isNavItemActive } from "@/lib/theme/nav-config"
 import type { NavItem } from "@/lib/theme/nav-config"
+import { tw } from "@/lib/theme/diecast-theme"
 
 interface AppNavLinkProps {
   item: NavItem
@@ -26,7 +27,7 @@ export function AppNavLink({ item, pathname, onNavigate, collapsed }: AppNavLink
         collapsed && "justify-center px-2",
         isActive
           ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
-          : "text-muted-foreground hover:bg-[rgba(255,255,255,0.03)] hover:text-[#B6FFF2]"
+          : cn(tw.navItemText, "hover:bg-[rgba(255,255,255,0.03)] hover:text-[#bfe9ff]")
       )}
     >
       <Icon
@@ -35,7 +36,7 @@ export function AppNavLink({ item, pathname, onNavigate, collapsed }: AppNavLink
           collapsed ? "h-5 w-5" : "",
           isActive
             ? "text-[#5EEAD4] drop-shadow-[0_0_8px_rgba(45,212,191,0.25)]"
-            : "text-[#94A3B8] group-hover:text-[#B6FFF2]"
+            : cn(tw.navItemText, "group-hover:text-[#bfe9ff]")
         )}
       />
       {!collapsed && item.label}
