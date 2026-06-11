@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import { stripImageCacheVersion } from "@/lib/collection-images"
 import { cn } from "@/lib/utils"
 import { tw } from "@/lib/theme/diecast-theme"
 import type { CatalogItem } from "../page"
@@ -14,7 +15,9 @@ interface DiecastCardProps {
 export default function DiecastCard({ item, onClick }: DiecastCardProps) {
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
 
-  const availableUrls = item.imageUrls.filter((url) => !failedUrls.has(url))
+  const availableUrls = item.imageUrls.filter(
+    (url) => !failedUrls.has(stripImageCacheVersion(url))
+  )
   const firstImage = availableUrls[0] ?? null
 
   return (
@@ -36,7 +39,10 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 20vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={() => setFailedUrls((prev) => new Set(prev).add(firstImage))}
+            onError={() => {
+              const cacheKey = stripImageCacheVersion(firstImage)
+              setFailedUrls((prev) => new Set(prev).add(cacheKey))
+            }}
             unoptimized
           />
         ) : (

@@ -1,8 +1,5 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
-import {
-  getBrandStorageImageUrls,
-  mergeCatalogImageUrls,
-} from "@/lib/collection-images"
+import { buildCatalogItemImageUrls } from "@/lib/collection-images"
 import CatalogClient from "./components/CatalogClient"
 
 /* -------------------------------------------------------------------------
@@ -27,6 +24,7 @@ export interface CatalogItem {
   brand_name: string
   brand_id: number | null
   imageUrls: string[]
+  imageVersion: number | null
   /* individual purchase records — sorted by price desc in detail view */
   purchases: PurchaseRecord[]
   /* aggregated for card display */
@@ -42,40 +40,16 @@ export interface CatalogBrand {
 }
 
 /* -------------------------------------------------------------------------
- * Helpers
- * ---------------------------------------------------------------------- */
-const DEFAULT_IMAGE_SLOTS = 5
-
-function getSeriesImageUrls(itemNo: string | null): string[] {
-  if (!itemNo) return []
-  const normalized = itemNo.trim().toUpperCase()
-  const series = normalized.match(/MGT\d+/)?.[0] || normalized
-  if (!/^MGT\d{5}$/.test(series)) return []
-  return Array.from({ length: DEFAULT_IMAGE_SLOTS }, (_, i) =>
-    `/api/catalog/image/${series}/${i + 1}.jpg`
-  )
-}
-
-function extractRemarkImageUrls(remark: string | null): string[] {
-  if (!remark) return []
-  const matches = remark.match(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|webp|gif)|\/api\/[^\s]+\.(?:jpg|jpeg|png|webp|gif))/gi)
-  if (!matches) return []
-  /* Rewrite any mini-gt image API URLs to the public catalog endpoint */
-  return matches.map((url) =>
-    url.replace(/^\/api\/mini-gt\/image\//, "/api/catalog/image/")
-  )
-}
-
-/* -------------------------------------------------------------------------
  * Page (Server Component)
  * ---------------------------------------------------------------------- */
 export default async function CatalogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; itemNo?: string }>
+  searchParams: Promise<{ search?: string; itemNo?: string; brand?: string }>
 }) {
   const params = await searchParams
   const initialSearch = (params.search ?? params.itemNo ?? "").trim()
+  const initialBrand = (params.brand ?? "").trim()
   const supabase = await createServerSupabaseClient()
 
   const [
@@ -86,7 +60,7 @@ export default async function CatalogPage({
   ] = await Promise.all([
     supabase
       .from("tbl_collection")
-      .select("id, name, item_no, scale, remark, brand_id, tbl_master_brand(name)")
+      .select("id, name, item_no, scale, remark, brand_id, created_at, updated_at, tbl_master_brand(name)")
       .order("name", { ascending: true }),
 
     supabase
@@ -159,10 +133,13 @@ export default async function CatalogPage({
     scale: string | null
     remark: string | null
     brand_id: number | null
+    created_at: number | null
+    updated_at: number | null
     tbl_master_brand?: { name: string } | Array<{ name: string }> | null
   }
 
   const items: CatalogItem[] = ((collectionsRaw ?? []) as CollectionRow[]).map((c) => {
+    const imageVersion = c.updated_at ?? c.created_at ?? null
     const brandObj = Array.isArray(c.tbl_master_brand)
       ? (c.tbl_master_brand[0] ?? null)
       : c.tbl_master_brand ?? null
@@ -178,11 +155,14 @@ export default async function CatalogPage({
       remark: c.remark,
       brand_name: brandName,
       brand_id: c.brand_id,
-      imageUrls: mergeCatalogImageUrls(
-        extractRemarkImageUrls(c.remark),
-        getBrandStorageImageUrls(brandName, c.item_no, c.name),
-        getSeriesImageUrls(c.item_no)
-      ),
+      imageUrls: buildCatalogItemImageUrls({
+        remark: c.remark,
+        brandName,
+        itemNo: c.item_no,
+        collectionName: c.name,
+        imageVersion,
+      }),
+      imageVersion,
       purchases,
       totalQty: purchases.reduce((sum, p) => sum + p.quantity, 0),
       isChase: purchases.some((p) => p.isChase),
@@ -213,6 +193,7 @@ export default async function CatalogPage({
       brands={brands}
       defaultBrand={defaultBrand}
       initialSearch={initialSearch}
+      initialBrand={initialBrand || undefined}
     />
   )
 }

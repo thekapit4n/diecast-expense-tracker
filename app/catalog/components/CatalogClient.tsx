@@ -19,6 +19,7 @@ interface CatalogClientProps {
   brands: CatalogBrand[]
   defaultBrand: string | null
   initialSearch?: string
+  initialBrand?: string
 }
 
 const INITIAL_VISIBLE = 20
@@ -87,19 +88,22 @@ export default function CatalogClient({
   brands,
   defaultBrand,
   initialSearch = "",
+  initialBrand,
 }: CatalogClientProps) {
   const router = useRouter()
   const [isReloading, startReload] = useTransition()
+  const [imageReloadBust, setImageReloadBust] = useState<number | null>(null)
   const [search, setSearch] = useState(initialSearch)
   const [selectedItem, setSelectedItem] = useState<CatalogItem | null>(null)
   const [filterOpen, setFilterOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE)
+  const activeBrand = initialBrand ?? defaultBrand
   const [filters, setFilters] = useState<FilterState>({
-    brands: defaultBrand ? [defaultBrand] : [],
+    brands: activeBrand ? [activeBrand] : [],
     scales: [],
-    sort: isMiniGTBrand(defaultBrand) ? "series_asc" : "name_asc",
+    sort: isMiniGTBrand(activeBrand) ? "series_asc" : "name_asc",
   })
 
   /* Sentinel ref for infinite scroll */
@@ -200,6 +204,7 @@ export default function CatalogClient({
   }
 
   function handleReload() {
+    setImageReloadBust(Date.now())
     startReload(() => {
       router.refresh()
     })
@@ -382,6 +387,7 @@ export default function CatalogClient({
         onClose={() => setSelectedItem(null)}
         onReload={handleReload}
         isReloading={isReloading}
+        imageReloadBust={imageReloadBust}
       />
       <FilterSortSheet
         open={filterOpen}

@@ -263,7 +263,10 @@ export async function POST(request: NextRequest) {
 
       const { error: updateError } = await supabase
         .from("tbl_collection")
-        .update({ remark: mergedRemark })
+        .update({
+          remark: mergedRemark,
+          updated_at: Math.floor(Date.now() / 1000),
+        })
         .eq("id", collection.id)
 
       if (updateError) {

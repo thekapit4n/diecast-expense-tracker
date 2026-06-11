@@ -6,6 +6,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw, ShoppingBag, CalendarDays, Package } from "lucide-react"
+import { appendImageCacheVersion, stripImageCacheVersion } from "@/lib/collection-images"
 import { cn } from "@/lib/utils"
 import { colors, tw } from "@/lib/theme/diecast-theme"
 import type { CatalogItem, PurchaseRecord } from "../page"
@@ -15,6 +16,7 @@ interface CardDetailSheetProps {
   onClose: () => void
   onReload?: () => void
   isReloading?: boolean
+  imageReloadBust?: number | null
 }
 
 function formatPrice(value: number): string {
@@ -48,6 +50,7 @@ export default function CardDetailSheet({
   onClose,
   onReload,
   isReloading = false,
+  imageReloadBust = null,
 }: CardDetailSheetProps) {
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
   const [imageIndex, setImageIndex] = useState(0)
@@ -56,9 +59,18 @@ export default function CardDetailSheet({
   useEffect(() => {
     setFailedUrls(new Set())
     setImageIndex(0)
-  }, [item?.id])
+  }, [item?.id, imageReloadBust])
 
-  const availableUrls = item ? item.imageUrls.filter((url) => !failedUrls.has(url)) : []
+  const displayUrls = item
+    ? item.imageUrls.map((url) => {
+        if (!imageReloadBust) return url
+        return appendImageCacheVersion(stripImageCacheVersion(url), imageReloadBust)
+      })
+    : []
+
+  const availableUrls = displayUrls.filter(
+    (url) => !failedUrls.has(stripImageCacheVersion(url))
+  )
   const currentUrl = availableUrls[imageIndex] ?? null
   const total = availableUrls.length
 
@@ -112,7 +124,8 @@ export default function CardDetailSheet({
                   sizes="100vw"
                   className="object-contain"
                   onError={() => {
-                    setFailedUrls((prev) => new Set(prev).add(currentUrl))
+                    const cacheKey = stripImageCacheVersion(currentUrl)
+                    setFailedUrls((prev) => new Set(prev).add(cacheKey))
                     if (imageIndex >= availableUrls.length - 1) setImageIndex(0)
                   }}
                   unoptimized

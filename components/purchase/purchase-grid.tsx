@@ -20,6 +20,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { EditPurchaseModal } from "./edit-purchase-modal"
 import { Link as LinkIcon } from "lucide-react"
+import { buildCatalogSearchTerm, hasCatalogImages } from "@/lib/collection-images"
 import { tw } from "@/lib/theme/diecast-theme"
 
 // Register AG Grid modules (Enterprise only)
@@ -106,6 +107,7 @@ export interface PurchaseItem {
   address: string | null
   country: string | null
   remark: string | null
+  collection_remark: string | null
 }
 
 export interface PurchaseGridRef {
@@ -129,15 +131,13 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
   const savedGridStateRef = useRef<SavedGridState | null>(null)
   const supabase = createClient()
 
-  const isMiniGtSeries = useCallback((brandName: string | null, itemNo: string | null) => {
-    const normalizedBrand = (brandName || "").toLowerCase()
-    const normalizedItemNo = (itemNo || "").trim().toUpperCase()
-    return normalizedBrand.includes("mini gt") && /^MGT\d{5}/.test(normalizedItemNo)
-  }, [])
-
-  const openInCatalog = useCallback((itemNo: string) => {
-    const encodedItemNo = encodeURIComponent(itemNo.trim().toUpperCase())
-    window.location.href = `/catalog?search=${encodedItemNo}`
+  const openInCatalog = useCallback((itemNo: string | null, collectionName: string, brandName: string) => {
+    const searchTerm = buildCatalogSearchTerm(itemNo, collectionName)
+    if (!searchTerm) return
+    const url = new URL("/catalog", window.location.origin)
+    url.searchParams.set("search", searchTerm)
+    if (brandName) url.searchParams.set("brand", brandName)
+    window.location.href = url.toString()
   }, [])
 
   const restoreGridState = useCallback(() => {
@@ -201,6 +201,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
             name,
             item_no,
             scale,
+            remark,
             tbl_master_brand(name)
           )
         `)
@@ -238,6 +239,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         address: item.address,
         country: item.country,
         remark: item.remark,
+        collection_remark: item.tbl_collection.remark ?? null,
       }))
 
       // Sort by payment date descending (most recent first)
@@ -320,17 +322,24 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
     },
     {
       headerName: "",
-      colId: "mini_gt_link",
+      colId: "catalog_link",
       width: 90,
       sortable: false,
       filter: false,
       pinned: "right",
       suppressHeaderMenuButton: true,
       cellRenderer: (params: ICellRendererParams<PurchaseItem>) => {
-        const itemNo = params.data?.item_no || ""
+        const itemNo = params.data?.item_no || null
         const brandName = params.data?.brand_name || ""
+        const collectionName = params.data?.collection_name || ""
+        const remark = params.data?.collection_remark || null
 
-        if (!isMiniGtSeries(brandName, itemNo)) {
+        if (!hasCatalogImages({
+          brandName,
+          itemNo,
+          collectionName,
+          remark,
+        })) {
           return null
         }
 
@@ -340,7 +349,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
             size="sm"
             variant="outline"
             aria-label="Open in catalog"
-            onClick={() => openInCatalog(itemNo)}
+            onClick={() => openInCatalog(itemNo, collectionName, brandName)}
           >
             <LinkIcon className="h-4 w-4" />
           </Button>
@@ -723,7 +732,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         closeOnApply: true,
       },
     },
-  ], [isMiniGtSeries, openInCatalog])
+  ], [openInCatalog])
 
   const defaultColDef = useMemo(
     () => ({

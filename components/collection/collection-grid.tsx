@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { AgGridPanel } from "@/components/ag-grid/ag-grid-panel"
 import { Button } from "@/components/ui/button"
 import { Link as LinkIcon } from "lucide-react"
+import { buildCatalogSearchTerm, hasCatalogImages } from "@/lib/collection-images"
 
 // Register AG Grid modules (Enterprise only)
 // AllEnterpriseModule includes all Enterprise features
@@ -35,15 +36,13 @@ export function CollectionGrid() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
-  const isMiniGtSeries = useCallback((brandName: string | null, itemNo: string | null) => {
-    const normalizedBrand = (brandName || "").toLowerCase()
-    const normalizedItemNo = (itemNo || "").trim().toUpperCase()
-    return normalizedBrand.includes("mini gt") && /^MGT\d{5}/.test(normalizedItemNo)
-  }, [])
-
-  const openInCatalog = useCallback((itemNo: string) => {
-    const encodedItemNo = encodeURIComponent(itemNo.trim().toUpperCase())
-    window.location.href = `/catalog?search=${encodedItemNo}`
+  const openInCatalog = useCallback((itemNo: string | null, collectionName: string, brandName: string) => {
+    const searchTerm = buildCatalogSearchTerm(itemNo, collectionName)
+    if (!searchTerm) return
+    const url = new URL("/catalog", window.location.origin)
+    url.searchParams.set("search", searchTerm)
+    if (brandName) url.searchParams.set("brand", brandName)
+    window.location.href = url.toString()
   }, [])
 
   const fetchCollections = useCallback(async () => {
@@ -204,15 +203,23 @@ export function CollectionGrid() {
       },
       {
         headerName: "",
-        colId: "mini_gt_action",
+        colId: "catalog_link",
         width: 110,
         sortable: false,
         filter: false,
         suppressHeaderMenuButton: true,
         cellRenderer: (params: any) => {
-          const itemNo = params.data?.item_no || ""
+          const itemNo = params.data?.item_no || null
           const brandName = params.data?.brand_name || ""
-          if (!isMiniGtSeries(brandName, itemNo)) {
+          const collectionName = params.data?.name || ""
+          const remark = params.data?.remark || null
+
+          if (!hasCatalogImages({
+            brandName,
+            itemNo,
+            collectionName,
+            remark,
+          })) {
             return null
           }
 
@@ -222,7 +229,7 @@ export function CollectionGrid() {
               size="sm"
               variant="outline"
               aria-label="Open in catalog"
-              onClick={() => openInCatalog(itemNo)}
+              onClick={() => openInCatalog(itemNo, collectionName, brandName)}
             >
               <LinkIcon className="h-4 w-4" />
             </Button>
@@ -230,7 +237,7 @@ export function CollectionGrid() {
         },
       },
     ],
-    [isMiniGtSeries, openInCatalog]
+    [openInCatalog]
   )
 
   const defaultColDef = useMemo(

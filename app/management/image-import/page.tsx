@@ -12,7 +12,7 @@ import { CollectionCombobox, type CollectionOption } from "@/components/ui/colle
 import { filterCollectionsBySearch } from "@/lib/collection-search"
 import { getBrandStorageSlug, resolveFolderKey } from "@/lib/collection-images"
 import { toast } from "sonner"
-import { ImagePlus, Loader2, Upload, X } from "lucide-react"
+import { Globe, ImagePlus, Loader2, Upload, X } from "lucide-react"
 
 interface BrandOption {
   id: number
@@ -517,14 +517,17 @@ export default function ImageImportPage() {
             </div>
           </div>
 
-          <Button onClick={handleMiniGtImport} disabled={isImporting} variant="secondary">
+          <Button onClick={handleMiniGtImport} disabled={isImporting}>
             {isImporting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Importing...
               </>
             ) : (
-              "Import From URL"
+              <>
+                <Globe className="mr-2 h-4 w-4" />
+                Import From URL
+              </>
             )}
           </Button>
 

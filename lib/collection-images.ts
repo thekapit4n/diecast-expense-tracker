@@ -100,6 +100,81 @@ export function buildCatalogImageUrl(brandSlug: string, folderKey: string, fileN
   return `/api/catalog/image/${brandSlug}/${safeFolderKey}/${fileName.toLowerCase()}`
 }
 
+export function stripImageCacheVersion(url: string): string {
+  const [path, query = ""] = url.split("?", 2)
+  if (!query) return path
+
+  const params = query
+    .split("&")
+    .filter((part) => part && !part.startsWith("v="))
+  return params.length > 0 ? `${path}?${params.join("&")}` : path
+}
+
+/**
+ * Append a stable cache-bust token. Re-use the same version until images change
+ * so browsers can still cache responses between visits.
+ */
+export function appendImageCacheVersion(url: string, version: number | string | null | undefined): string {
+  if (version == null || version === "") return url
+  const base = stripImageCacheVersion(url)
+  const separator = base.includes("?") ? "&" : "?"
+  return `${base}${separator}v=${version}`
+}
+
+export function extractRemarkImageUrls(remark: string | null): string[] {
+  if (!remark) return []
+  const matches = remark.match(
+    /(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|webp|gif)|\/api\/[^\s]+\.(?:jpg|jpeg|png|webp|gif))/gi
+  )
+  if (!matches) return []
+
+  return matches.map((url) =>
+    url.replace(/^\/api\/mini-gt\/image\//, "/api/catalog/image/")
+  )
+}
+
+export function getMiniGtSeriesImageUrls(
+  itemNo: string | null,
+  maxSlots: number = DEFAULT_CATALOG_IMAGE_SLOTS
+): string[] {
+  if (!itemNo) return []
+  const normalized = itemNo.trim().toUpperCase()
+  const series = normalized.match(/MGT\d+/)?.[0] || normalized
+  if (!/^MGT\d{5}$/.test(series)) return []
+
+  return Array.from({ length: maxSlots }, (_, index) =>
+    `/api/catalog/image/${series}/${index + 1}.jpg`
+  )
+}
+
+export function hasCatalogImages(options: {
+  brandName: string
+  itemNo: string | null
+  collectionName?: string | null
+  remark: string | null
+}): boolean {
+  if (extractRemarkImageUrls(options.remark).length > 0) {
+    return true
+  }
+
+  const isMiniGt = options.brandName.trim().toLowerCase().includes("mini gt")
+  if (isMiniGt && options.itemNo) {
+    const normalized = options.itemNo.trim().toUpperCase()
+    const series = normalized.match(/MGT\d+/)?.[0] || normalized
+    if (/^MGT\d{5}$/.test(series)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+export function buildCatalogSearchTerm(itemNo: string | null, collectionName: string): string {
+  const normalizedItemNo = itemNo?.trim()
+  if (normalizedItemNo) return normalizedItemNo
+  return collectionName.trim()
+}
+
 /**
  * Probable catalog image URLs from Supabase storage layout (item no or model name folder).
  */
@@ -124,6 +199,26 @@ export function getBrandStorageImageUrls(
 
 export function mergeCatalogImageUrls(...groups: string[][]): string[] {
   return [...new Set(groups.flat())]
+}
+
+export function buildCatalogItemImageUrls(options: {
+  remark: string | null
+  brandName: string
+  itemNo: string | null
+  collectionName: string
+  imageVersion?: number | null
+}): string[] {
+  const urls = mergeCatalogImageUrls(
+    extractRemarkImageUrls(options.remark),
+    getBrandStorageImageUrls(options.brandName, options.itemNo, options.collectionName),
+    getMiniGtSeriesImageUrls(options.itemNo)
+  )
+
+  if (options.imageVersion == null) {
+    return urls
+  }
+
+  return urls.map((url) => appendImageCacheVersion(url, options.imageVersion))
 }
 
 export function getMimeType(fileName: string): string {
