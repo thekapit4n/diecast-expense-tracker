@@ -55,9 +55,9 @@ const purchaseDetailSchema = z.object({
   pricePerUnit: z.string().refine(
     (val) => {
       const num = parseFloat(val)
-      return !isNaN(num) && num > 0
+      return !isNaN(num) && num >= 0
     },
-    { message: "Price must be a positive number" }
+    { message: "Price must be 0 or a positive number" }
   ),
   purchaseType: z.string().optional(),
   platform: z.string().optional(),
