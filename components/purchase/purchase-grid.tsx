@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { EditPurchaseModal } from "./edit-purchase-modal"
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 import { Link as LinkIcon } from "lucide-react"
 import { buildCatalogSearchTerm, hasCatalogImages } from "@/lib/collection-images"
 import { tw } from "@/lib/theme/diecast-theme"
@@ -127,6 +128,8 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
   const [error, setError] = useState<string | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [purchaseToDelete, setPurchaseToDelete] = useState<PurchaseItem | null>(null)
   const gridApiRef = useRef<GridApi<PurchaseItem> | null>(null)
   const savedGridStateRef = useRef<SavedGridState | null>(null)
   const supabase = createClient()
@@ -752,8 +755,18 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         "export",
       ]
 
-      // Add "Edit" option only when right-clicking on collection_name column
+      // Add "Edit"/"Delete" options only when right-clicking on collection_name column
       if (params.column && params.column.getColId() === "collection_name") {
+        result.unshift({
+          name: "Delete Purchase",
+          icon: '<span class="ag-icon ag-icon-cross"></span>',
+          action: () => {
+            if (params.node && params.node.data) {
+              setPurchaseToDelete(params.node.data)
+              setDeleteDialogOpen(true)
+            }
+          },
+        })
         result.unshift({
           name: "Edit Purchase",
           icon: '<span class="ag-icon ag-icon-edit"></span>',
@@ -775,6 +788,52 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
   const handleEditSuccess = useCallback(() => {
     reload()
   }, [reload])
+
+  const handleDeletePurchase = useCallback(async () => {
+    if (!purchaseToDelete) return
+    try {
+      const { error: detailError } = await supabase
+        .from("tbl_collection_detail")
+        .delete()
+        .eq("purchase_id", purchaseToDelete.id)
+      if (detailError) throw detailError
+
+      const { error: purchaseError } = await supabase
+        .from("tbl_purchase")
+        .delete()
+        .eq("id", purchaseToDelete.id)
+      if (purchaseError) throw purchaseError
+
+      // If no other purchase references this collection, it's an orphan — remove it too.
+      const { count, error: countError } = await supabase
+        .from("tbl_purchase")
+        .select("id", { count: "exact", head: true })
+        .eq("collection_id", purchaseToDelete.collection_id)
+      if (countError) throw countError
+
+      let collectionAlsoDeleted = false
+      if ((count ?? 0) === 0) {
+        const { error: collectionError } = await supabase
+          .from("tbl_collection")
+          .delete()
+          .eq("id", purchaseToDelete.collection_id)
+        if (collectionError) throw collectionError
+        collectionAlsoDeleted = true
+      }
+
+      toast.success(
+        collectionAlsoDeleted
+          ? `Purchase deleted — "${purchaseToDelete.collection_name}" removed from Collection too (no other purchases left)`
+          : "Purchase deleted"
+      )
+      setDeleteDialogOpen(false)
+      setPurchaseToDelete(null)
+      reload()
+    } catch (err) {
+      console.error("Failed to delete purchase:", err)
+      toast.error("Failed to delete purchase")
+    }
+  }, [supabase, purchaseToDelete, reload])
 
   const handleGridReady = useCallback((api: GridApi<PurchaseItem>) => {
     gridApiRef.current = api
@@ -860,6 +919,25 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
           onSuccess={handleEditSuccess}
         />
       )}
+
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete this purchase?"
+        description={
+          <>
+            <p>
+              This permanently deletes the purchase record for{" "}
+              <span className="font-semibold text-foreground">{purchaseToDelete?.collection_name}</span>{" "}
+              (RM {purchaseToDelete?.total_price.toFixed(2)}), along with its owned-unit record if one exists.
+            </p>
+            <p>
+              If this is the only purchase left for this collection item, the collection entry itself will be deleted too. This cannot be undone.
+            </p>
+          </>
+        }
+        onConfirm={handleDeletePurchase}
+      />
     </>
   )
 })

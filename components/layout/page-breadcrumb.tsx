@@ -26,6 +26,7 @@ const routeLabels: Record<string, string> = {
   purchase: "Purchases",
   add: "Add Purchase",
   list: "Purchase List",
+  preorders: "Pre-order Tracker",
   collection: "Collection",
   catalog: "Catalog",
   categories: "Categories",

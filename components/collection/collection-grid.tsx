@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { AgGridReact } from "ag-grid-react"
-import { ColDef, ModuleRegistry, FirstDataRenderedEvent } from "ag-grid-community"
+import { ColDef, ModuleRegistry, FirstDataRenderedEvent, GetContextMenuItemsParams } from "ag-grid-community"
 import { AllEnterpriseModule, SetFilterModule } from "ag-grid-enterprise"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { AgGridPanel } from "@/components/ag-grid/ag-grid-panel"
 import { Button } from "@/components/ui/button"
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 import { Link as LinkIcon } from "lucide-react"
 import { buildCatalogSearchTerm, hasCatalogImages } from "@/lib/collection-images"
 
@@ -35,6 +36,9 @@ export function CollectionGrid() {
   const [collections, setCollections] = useState<CollectionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [collectionToDelete, setCollectionToDelete] = useState<CollectionItem | null>(null)
+  const [relatedPurchaseCount, setRelatedPurchaseCount] = useState<number | null>(null)
   const supabase = createClient()
   const openInCatalog = useCallback((itemNo: string | null, collectionName: string, brandName: string) => {
     const searchTerm = buildCatalogSearchTerm(itemNo, collectionName)
@@ -98,6 +102,71 @@ export function CollectionGrid() {
   useEffect(() => {
     fetchCollections()
   }, [fetchCollections])
+
+  const handleDeleteClick = useCallback(
+    async (collection: CollectionItem) => {
+      setCollectionToDelete(collection)
+      setRelatedPurchaseCount(null)
+      setDeleteDialogOpen(true)
+      const { count, error } = await supabase
+        .from("tbl_purchase")
+        .select("id", { count: "exact", head: true })
+        .eq("collection_id", collection.id)
+      if (error) {
+        console.error("Failed to count related purchases:", error)
+        return
+      }
+      setRelatedPurchaseCount(count ?? 0)
+    },
+    [supabase]
+  )
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!collectionToDelete) return
+    try {
+      const { error: purchaseError } = await supabase
+        .from("tbl_purchase")
+        .delete()
+        .eq("collection_id", collectionToDelete.id)
+      if (purchaseError) throw purchaseError
+
+      const { error: collectionError } = await supabase
+        .from("tbl_collection")
+        .delete()
+        .eq("id", collectionToDelete.id)
+      if (collectionError) throw collectionError
+
+      toast.success(`"${collectionToDelete.name}" and all its purchase records were deleted`)
+      setDeleteDialogOpen(false)
+      setCollectionToDelete(null)
+      fetchCollections()
+    } catch (err) {
+      console.error("Failed to delete collection:", err)
+      toast.error("Failed to delete collection")
+    }
+  }, [supabase, collectionToDelete, fetchCollections])
+
+  const getContextMenuItems = useCallback(
+    (params: GetContextMenuItemsParams<CollectionItem>) => {
+      const result: any[] = ["copy", "copyWithHeaders", "separator", "export"]
+
+      if (params.column && params.column.getColId() === "name") {
+        result.unshift({
+          name: "Delete Collection",
+          icon: '<span class="ag-icon ag-icon-cross"></span>',
+          action: () => {
+            if (params.node && params.node.data) {
+              handleDeleteClick(params.node.data)
+            }
+          },
+        })
+        result.unshift("separator")
+      }
+
+      return result
+    },
+    [handleDeleteClick]
+  )
 
   // Column definitions
   const columnDefs: ColDef<CollectionItem>[] = useMemo(
@@ -278,6 +347,7 @@ export function CollectionGrid() {
   }
 
   return (
+    <>
     <AgGridPanel>
       {(popupParent) => (
         <AgGridReact<CollectionItem>
@@ -296,9 +366,34 @@ export function CollectionGrid() {
           domLayout="normal"
           popupParent={popupParent}
           onFirstDataRendered={handleFirstDataRendered}
+          getContextMenuItems={getContextMenuItems as any}
         />
       )}
     </AgGridPanel>
+
+    <ConfirmDeleteDialog
+      open={deleteDialogOpen}
+      onOpenChange={setDeleteDialogOpen}
+      title="Delete this collection?"
+      description={
+        <>
+          <p>
+            This permanently deletes{" "}
+            <span className="font-semibold text-foreground">{collectionToDelete?.name}</span> from your Collection.
+          </p>
+          <p>
+            {relatedPurchaseCount === null
+              ? "Checking related purchases..."
+              : relatedPurchaseCount > 0
+              ? `It will also delete all ${relatedPurchaseCount} purchase record(s) linked to this item.`
+              : "No purchases are linked to this item."}{" "}
+            This cannot be undone.
+          </p>
+        </>
+      }
+      onConfirm={handleDeleteConfirm}
+    />
+    </>
   )
 }
 

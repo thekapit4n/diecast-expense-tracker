@@ -145,14 +145,14 @@ export default function DashboardPage() {
       try {
         const { data, error } = await supabase
           .from("tbl_purchase")
-          .select("total_price")
+          .select("amount_paid")
 
         if (error) throw error
 
-        const total = data?.reduce((sum, item) => sum + (item.total_price || 0), 0) || 0
+        const total = data?.reduce((sum, item) => sum + (item.amount_paid || 0), 0) || 0
 
-        setStats(prev => prev.map((stat, idx) => 
-          idx === 0 
+        setStats(prev => prev.map((stat, idx) =>
+          idx === 0
             ? { 
                 ...stat, 
                 value: `RM ${total.toFixed(2)}`, 
@@ -229,6 +229,7 @@ export default function DashboardPage() {
         const { data, error } = await supabase
           .from("tbl_purchase")
           .select("price_per_unit")
+          .eq("payment_status", "paid")
 
         if (error) throw error
 
@@ -269,12 +270,12 @@ export default function DashboardPage() {
         
         const { data, error } = await supabase
           .from("tbl_purchase")
-          .select("total_price, quantity, payment_date")
+          .select("amount_paid, quantity, payment_date")
           .gte("payment_date", startOfMonth)
 
         if (error) throw error
 
-        const total = data?.reduce((sum, item) => sum + (item.total_price || 0), 0) || 0
+        const total = data?.reduce((sum, item) => sum + (item.amount_paid || 0), 0) || 0
         const items = data?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
 
         setStats(prev => prev.map((stat, idx) => 
@@ -350,15 +351,15 @@ export default function DashboardPage() {
         // First, get total spending to calculate percentages
         const { data: allPurchases } = await supabase
           .from("tbl_purchase")
-          .select("total_price")
+          .select("amount_paid")
 
-        const totalSpending = allPurchases?.reduce((sum, item) => sum + (item.total_price || 0), 0) || 1
+        const totalSpending = allPurchases?.reduce((sum, item) => sum + (item.amount_paid || 0), 0) || 1
 
         // Get spending by brand
         const { data, error } = await supabase
           .from("tbl_purchase")
           .select(`
-            total_price,
+            amount_paid,
             tbl_collection!inner(
               brand_id,
               tbl_master_brand!inner(
@@ -378,7 +379,7 @@ export default function DashboardPage() {
         data?.forEach((item: any) => {
           const brandId = item.tbl_collection.brand_id
           const brandName = item.tbl_collection.tbl_master_brand.name
-          const price = item.total_price || 0
+          const price = item.amount_paid || 0
 
           if (brandMap.has(brandId)) {
             brandMap.get(brandId)!.total += price

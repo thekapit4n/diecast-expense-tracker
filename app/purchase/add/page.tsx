@@ -41,6 +41,7 @@ import { BrandCombobox } from "@/components/ui/brand-combobox"
 import { CollectionCombobox, type CollectionOption } from "@/components/ui/collection-combobox"
 import { ItemNoCombobox } from "@/components/ui/item-no-combobox"
 import { ShopCombobox } from "@/components/ui/shop-combobox"
+import { PoOrderCombobox, type PoOrderOption } from "@/components/ui/po-order-combobox"
 import { resolveOrCreateShop } from "@/lib/shop/resolve-or-create"
 import { useUserTracking } from "@/lib/auth/use-user-tracking"
 
@@ -61,12 +62,9 @@ const purchaseDetailSchema = z.object({
   ),
   purchaseType: z.string().optional(),
   platform: z.string().optional(),
-  preOrderStatus: z.string().optional(),
-  preOrderDate: z.date().optional(),
   paymentStatus: z.string().optional(),
   paymentMethod: z.string().optional(),
   paymentDate: z.date().optional(),
-  arrivalDate: z.date().optional(),
   urlLink: z.string().optional(),
   isChase: z.string().optional(),
   editionType: z.string().optional(),
@@ -77,6 +75,17 @@ const purchaseDetailSchema = z.object({
   address: z.string().optional(),
   country: z.string().optional(),
   remark: z.string().optional(),
+  amountPaid: z.string().optional(),
+  linkToPoOrder: z.string().optional(),
+  poOrderId: z.string().nullable().optional(),
+  poOrderReference: z.string().optional(),
+  poOrderChannel: z.string().optional(),
+  poOrderEta: z.string().optional(),
+  poOrderOrderDate: z.date().optional(),
+  poOrderCloseDate: z.date().optional(),
+  poOrderFullPayment: z.string().optional(),
+  poOrderSourceLink: z.string().optional(),
+  variantStatus: z.string().optional(),
 })
 
 const purchaseFormSchema = z.object({
@@ -105,7 +114,8 @@ export default function AddPurchasePage() {
   const [itemNoSearchResults, setItemNoSearchResults] = useState<CollectionOption[]>([])
   const [itemNoSearchInput, setItemNoSearchInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [collapsedSections, setCollapsedSections] = useState<Record<number, { preorder: boolean, additional: boolean }>>({})
+  const [collapsedSections, setCollapsedSections] = useState<Record<number, { poOrder: boolean, additional: boolean }>>({})
+  const [poOrderSearchInput, setPoOrderSearchInput] = useState<Record<number, string>>({})
   const [isCollectionSelected, setIsCollectionSelected] = useState(false)
   const [miniGtProductUrl, setMiniGtProductUrl] = useState("")
   const [isImportingMiniGtImage, setIsImportingMiniGtImage] = useState(false)
@@ -127,7 +137,6 @@ export default function AddPurchasePage() {
           pricePerUnit: "",
           purchaseType: "",
           platform: "",
-          preOrderStatus: "",
           paymentStatus: "unpaid",
           paymentMethod: "",
           urlLink: "",
@@ -140,6 +149,15 @@ export default function AddPurchasePage() {
           address: "",
           country: "",
           remark: "",
+          amountPaid: "",
+          linkToPoOrder: "0",
+          poOrderId: null,
+          poOrderReference: "",
+          poOrderChannel: "",
+          poOrderEta: "",
+          poOrderFullPayment: "0",
+          poOrderSourceLink: "",
+          variantStatus: "regular",
         }
       ],
     },
@@ -410,7 +428,7 @@ export default function AddPurchasePage() {
   }
 
   // Toggle collapsible section
-  const toggleSection = (index: number, section: 'preorder' | 'additional') => {
+  const toggleSection = (index: number, section: 'poOrder' | 'additional') => {
     setCollapsedSections(prev => ({
       ...prev,
       [index]: {
@@ -421,7 +439,7 @@ export default function AddPurchasePage() {
   }
 
   // Check if section is collapsed (default to true/collapsed)
-  const isSectionCollapsed = (index: number, section: 'preorder' | 'additional') => {
+  const isSectionCollapsed = (index: number, section: 'poOrder' | 'additional') => {
     return collapsedSections[index]?.[section] !== false // Default to collapsed (true)
   }
 
@@ -434,6 +452,16 @@ export default function AddPurchasePage() {
 
 
   const onSubmit = async (data: PurchaseFormValues) => {
+    const missingPoReference = data.purchaseDetails.findIndex(
+      (detail) => detail.linkToPoOrder === "1" && !detail.poOrderId && !detail.poOrderReference?.trim()
+    )
+    if (missingPoReference !== -1) {
+      toast.error(
+        `Purchase #${missingPoReference + 1}: enter a PO order reference (or pick an existing one) to appear on the Pre-order Tracker, or turn "Is this a pre-order?" back to No.`
+      )
+      return
+    }
+
     setIsSubmitting(true)
     try {
       if (isMiniGtBrand && miniGtSeries && !hasMiniGtImage && miniGtProductUrl.trim()) {
@@ -496,6 +524,44 @@ export default function AddPurchasePage() {
           country: detail.country,
         })
 
+        // Resolve or create the PO order this item belongs to, if tracked
+        let poOrderId: string | null = null
+        if (detail.linkToPoOrder === "1") {
+          if (detail.poOrderId) {
+            poOrderId = detail.poOrderId
+          } else if (detail.poOrderReference?.trim()) {
+            const { data: poOrderData, error: poOrderError } = await supabase
+              .from("tbl_po_order")
+              .insert({
+                shop_id: shopId,
+                reference: detail.poOrderReference.trim(),
+                channel: detail.poOrderChannel || null,
+                eta: detail.poOrderEta || null,
+                po_close_date: formatDateForDatabase(detail.poOrderCloseDate),
+                full_payment: detail.poOrderFullPayment === "1",
+                source_link: detail.poOrderSourceLink?.trim() || null,
+                order_date: formatDateForDatabase(detail.poOrderOrderDate ?? new Date()),
+                ...getInsertFields(),
+              })
+              .select("id")
+              .single()
+
+            if (poOrderError) {
+              console.error("PO order error:", poOrderError)
+              toast.error("Failed to create PO order")
+            } else {
+              poOrderId = poOrderData?.id ?? null
+            }
+          }
+        }
+
+        const amountPaid =
+          detail.paymentStatus === "paid"
+            ? totalPrice
+            : detail.paymentStatus === "partial"
+            ? parseFloat(detail.amountPaid || "0") || 0
+            : 0
+
         const { data: purchaseData, error: purchaseError } = await supabase
           .from("tbl_purchase")
           .insert({
@@ -505,12 +571,9 @@ export default function AddPurchasePage() {
             total_price: totalPrice,
             purchase_type: detail.purchaseType || null,
             platform: detail.platform || null,
-            pre_order_status: detail.preOrderStatus || null,
-            pre_order_date: formatDateForDatabase(detail.preOrderDate),
             payment_status: detail.paymentStatus || null,
-            payment_method: detail.paymentMethod || null,
+            payment_method: detail.paymentMethod && detail.paymentMethod !== "none" ? detail.paymentMethod : null,
             payment_date: formatDateForDatabase(detail.paymentDate),
-            arrival_date: formatDateForDatabase(detail.arrivalDate),
             url_link: detail.urlLink || null,
             is_chase: detail.isChase === "1",
             edition_type: detail.editionType || null,
@@ -522,6 +585,9 @@ export default function AddPurchasePage() {
             address: detail.address || null,
             country: detail.country || null,
             remark: detail.remark || null,
+            po_order_id: poOrderId,
+            variant_status: detail.linkToPoOrder === "1" ? (detail.variantStatus || "regular") : null,
+            amount_paid: amountPaid,
             ...getInsertFields(),
           })
           .select()
@@ -815,7 +881,6 @@ export default function AddPurchasePage() {
                       pricePerUnit: "",
                       purchaseType: "",
                       platform: "",
-                      preOrderStatus: "",
                       paymentStatus: "unpaid",
                       paymentMethod: "",
                       urlLink: "",
@@ -828,6 +893,15 @@ export default function AddPurchasePage() {
                       address: "",
                       country: "",
                       remark: "",
+                      amountPaid: "",
+                      linkToPoOrder: "0",
+                      poOrderId: null,
+                      poOrderReference: "",
+                      poOrderChannel: "",
+                      poOrderEta: "",
+                      poOrderFullPayment: "0",
+                      poOrderSourceLink: "",
+                      variantStatus: "regular",
                     })}
                   >
                     <Plus className="mr-2 h-4 w-4" />
@@ -985,6 +1059,7 @@ export default function AddPurchasePage() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
+                                  <SelectItem value="none">Not specified</SelectItem>
                                   <SelectItem value="cash">Cash</SelectItem>
                                   <SelectItem value="qr_payment">QR Payment</SelectItem>
                                   <SelectItem value="credit_card">Credit Card</SelectItem>
@@ -1012,6 +1087,7 @@ export default function AddPurchasePage() {
                                 </FormControl>
                                 <SelectContent>
                                   <SelectItem value="unpaid">Unpaid</SelectItem>
+                                  <SelectItem value="partial">Partial (deposit paid)</SelectItem>
                                   <SelectItem value="paid">Paid</SelectItem>
                                   <SelectItem value="refunded">Refunded</SelectItem>
                                 </SelectContent>
@@ -1020,6 +1096,34 @@ export default function AddPurchasePage() {
                             </FormItem>
                           )}
                         />
+
+                        {form.watch(`purchaseDetails.${index}.paymentStatus`) === "partial" && (
+                          <FormField
+                            control={form.control}
+                            name={`purchaseDetails.${index}.amountPaid`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Amount Paid So Far (RM)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="0.00"
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormDescription>
+                                  Balance: RM {Math.max(
+                                    (totalPrices[index] || 0) - (parseFloat(form.watch(`purchaseDetails.${index}.amountPaid`) || "0") || 0),
+                                    0
+                                  ).toFixed(2)}
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
 
                         <FormField
                           control={form.control}
@@ -1068,133 +1172,293 @@ export default function AddPurchasePage() {
                         />
                       </div>
 
-                      {/* Pre-Order Information - Collapsible */}
+                      {/* Pre-order Tracking - Collapsible (unified: replaces the old separate Pre-Order Information section) */}
                       <div className="space-y-4 border-t pt-4">
                         <button
                           type="button"
-                          onClick={() => toggleSection(index, 'preorder')}
+                          onClick={() => toggleSection(index, 'poOrder')}
                           className="flex w-full items-center justify-between text-sm font-semibold hover:text-primary"
                         >
-                          <span>Pre-Order Information</span>
-                          {isSectionCollapsed(index, 'preorder') ? (
+                          <span>Pre-order Tracking (optional)</span>
+                          {isSectionCollapsed(index, 'poOrder') ? (
                             <ChevronDown className="h-4 w-4" />
                           ) : (
                             <ChevronUp className="h-4 w-4" />
                           )}
                         </button>
 
-                        {!isSectionCollapsed(index, 'preorder') && (
+                        {!isSectionCollapsed(index, 'poOrder') && (
                           <div className="space-y-4">
-                            <div className="grid gap-4 md:grid-cols-2">
-                          <FormField
-                            control={form.control}
-                            name={`purchaseDetails.${index}.preOrderStatus`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Pre-Order Status</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Select status" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="pending">Pending</SelectItem>
-                                    <SelectItem value="paid">Paid</SelectItem>
-                                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={form.control}
-                            name={`purchaseDetails.${index}.preOrderDate`}
-                            render={({ field }) => (
-                              <FormItem className="flex flex-col">
-                                <FormLabel>Pre-Order Date</FormLabel>
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <FormControl>
-                                      <Button
-                                        variant="outline"
-                                        className={cn(
-                                          "w-full pl-3 text-left font-normal",
-                                          !field.value && "text-muted-foreground"
-                                        )}
-                                      >
-                                        {field.value ? (
-                                          format(field.value, "dd-MM-yyyy")
-                                        ) : (
-                                          <span>Pick a date</span>
-                                        )}
-                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                      </Button>
-                                    </FormControl>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                      mode="single"
-                                      selected={field.value}
-                                      onSelect={field.onChange}
-                                      defaultMonth={field.value}
-                                      captionLayout="dropdown"
-                                      fromYear={2024}
-                                      toYear={new Date().getFullYear() + 5}
-                                      initialFocus
-                                    />
-                                  </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <FormField
-                          control={form.control}
-                          name={`purchaseDetails.${index}.arrivalDate`}
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Arrival Date</FormLabel>
-                              <Popover>
-                                <PopoverTrigger asChild>
+                            <FormField
+                              control={form.control}
+                              name={`purchaseDetails.${index}.linkToPoOrder`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Is this a pre-order?</FormLabel>
                                   <FormControl>
                                     <Button
+                                      type="button"
                                       variant="outline"
-                                      className={cn(
-                                        "w-full pl-3 text-left font-normal",
-                                        !field.value && "text-muted-foreground"
-                                      )}
+                                      className="w-full justify-between"
+                                      onClick={() => {
+                                        const next = field.value === "1" ? "0" : "1"
+                                        field.onChange(next)
+
+                                        // Suggest a PO reference from the collection so the
+                                        // search box isn't blank; user can still edit it or
+                                        // clear it to search for an existing order instead.
+                                        if (next === "1") {
+                                          const currentRef = form.getValues(`purchaseDetails.${index}.poOrderReference`)
+                                          if (!currentRef?.trim()) {
+                                            const itemNoValue = form.getValues("itemNo")?.trim()
+                                            const collectionNameValue = form.getValues("collectionName")
+                                            const suggested = itemNoValue
+                                              ? `${itemNoValue} — ${collectionNameValue}`
+                                              : collectionNameValue
+                                            form.setValue(`purchaseDetails.${index}.poOrderReference`, suggested)
+                                            setPoOrderSearchInput((prev) => ({ ...prev, [index]: suggested }))
+                                          }
+                                        }
+                                      }}
                                     >
-                                      {field.value ? (
-                                        format(field.value, "dd-MM-yyyy")
-                                      ) : (
-                                        <span>Pick a date</span>
-                                      )}
-                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                      {field.value === "1" ? "Yes" : "No"}
                                     </Button>
                                   </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar
-                                    mode="single"
-                                    selected={field.value}
-                                    onSelect={field.onChange}
-                                    defaultMonth={field.value}
-                                    captionLayout="dropdown"
-                                    fromYear={2024}
-                                    toYear={new Date().getFullYear() + 10}
-                                    initialFocus
-                                  />
-                                </PopoverContent>
-                              </Popover>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                                  <FormDescription>
+                                    Say Yes to link this item to a PO order — groups it with others bought under the same deal, tracks ETA/close date once, and makes it appear on /purchase/preorders.
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            {form.watch(`purchaseDetails.${index}.linkToPoOrder`) === "1" && (
+                              <>
+                                <FormItem>
+                                  <FormLabel>PO Order</FormLabel>
+                                  <FormControl>
+                                    <PoOrderCombobox
+                                      value={form.watch(`purchaseDetails.${index}.poOrderId`) ?? null}
+                                      inputValue={poOrderSearchInput[index] ?? form.watch(`purchaseDetails.${index}.poOrderReference`) ?? ""}
+                                      onInputChange={(val) => {
+                                        setPoOrderSearchInput((prev) => ({ ...prev, [index]: val }))
+                                        form.setValue(`purchaseDetails.${index}.poOrderReference`, val)
+                                        form.setValue(`purchaseDetails.${index}.poOrderId`, null)
+                                      }}
+                                      onValueChange={(order: PoOrderOption | null) => {
+                                        if (order) {
+                                          form.setValue(`purchaseDetails.${index}.poOrderId`, order.id)
+                                          form.setValue(`purchaseDetails.${index}.poOrderReference`, order.reference || "")
+                                          form.setValue(`purchaseDetails.${index}.poOrderChannel`, order.channel || "")
+                                          form.setValue(`purchaseDetails.${index}.poOrderEta`, order.eta || "")
+                                          form.setValue(`purchaseDetails.${index}.poOrderFullPayment`, order.full_payment ? "1" : "0")
+                                          form.setValue(`purchaseDetails.${index}.poOrderSourceLink`, order.source_link || "")
+                                        } else {
+                                          form.setValue(`purchaseDetails.${index}.poOrderId`, null)
+                                        }
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    Search an existing order to add this item to it, or type a new reference (e.g. &quot;PRE035&quot;) to start tracking a new one.
+                                  </FormDescription>
+                                </FormItem>
+
+                                {!form.watch(`purchaseDetails.${index}.poOrderId`) && form.watch(`purchaseDetails.${index}.poOrderReference`) && (
+                                  <div className="space-y-4 rounded-md border border-dashed p-4">
+                                    <p className="text-xs text-muted-foreground">
+                                      New order details — seller comes from the Shop Information below.
+                                    </p>
+                                    <FormField
+                                      control={form.control}
+                                      name={`purchaseDetails.${index}.poOrderOrderDate`}
+                                      render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                          <FormLabel>Order Date</FormLabel>
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <FormControl>
+                                                <Button
+                                                  variant="outline"
+                                                  className={cn(
+                                                    "w-full pl-3 text-left font-normal",
+                                                    !field.value && "text-muted-foreground"
+                                                  )}
+                                                >
+                                                  {field.value ? format(field.value, "dd-MM-yyyy") : <span>Defaults to today</span>}
+                                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                </Button>
+                                              </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                              <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                defaultMonth={field.value}
+                                                captionLayout="dropdown"
+                                                fromYear={2024}
+                                                toYear={new Date().getFullYear()}
+                                                disabled={(date) => date > new Date() || date < new Date("2024-01-01")}
+                                                initialFocus
+                                              />
+                                            </PopoverContent>
+                                          </Popover>
+                                          <FormDescription>When you actually placed/committed to this deal.</FormDescription>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                      <FormField
+                                        control={form.control}
+                                        name={`purchaseDetails.${index}.poOrderChannel`}
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel>Channel</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                              <FormControl>
+                                                <SelectTrigger>
+                                                  <SelectValue placeholder="Select channel" />
+                                                </SelectTrigger>
+                                              </FormControl>
+                                              <SelectContent>
+                                                <SelectItem value="facebook">Facebook</SelectItem>
+                                                <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                                <SelectItem value="instagram">Instagram</SelectItem>
+                                                <SelectItem value="other">Other</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+
+                                      <FormField
+                                        control={form.control}
+                                        name={`purchaseDetails.${index}.poOrderEta`}
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel>ETA</FormLabel>
+                                            <FormControl>
+                                              <Input placeholder="e.g. Q1 2027, After event" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </div>
+
+                                    <FormField
+                                      control={form.control}
+                                      name={`purchaseDetails.${index}.poOrderSourceLink`}
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Source Link</FormLabel>
+                                          <FormControl>
+                                            <Input
+                                              type="url"
+                                              placeholder="https://facebook.com/... (or WhatsApp/IG post link)"
+                                              {...field}
+                                            />
+                                          </FormControl>
+                                          <FormDescription>
+                                            Link to the seller&apos;s PO post so you can find it again later.
+                                          </FormDescription>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                      <FormField
+                                        control={form.control}
+                                        name={`purchaseDetails.${index}.poOrderCloseDate`}
+                                        render={({ field }) => (
+                                          <FormItem className="flex flex-col">
+                                            <FormLabel>PO Close Date</FormLabel>
+                                            <Popover>
+                                              <PopoverTrigger asChild>
+                                                <FormControl>
+                                                  <Button
+                                                    variant="outline"
+                                                    className={cn(
+                                                      "w-full pl-3 text-left font-normal",
+                                                      !field.value && "text-muted-foreground"
+                                                    )}
+                                                  >
+                                                    {field.value ? format(field.value, "dd-MM-yyyy") : <span>Optional</span>}
+                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                  </Button>
+                                                </FormControl>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                  mode="single"
+                                                  selected={field.value}
+                                                  onSelect={field.onChange}
+                                                  defaultMonth={field.value}
+                                                  captionLayout="dropdown"
+                                                  fromYear={2024}
+                                                  toYear={new Date().getFullYear() + 5}
+                                                  initialFocus
+                                                />
+                                              </PopoverContent>
+                                            </Popover>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+
+                                      <FormField
+                                        control={form.control}
+                                        name={`purchaseDetails.${index}.poOrderFullPayment`}
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel>Seller requires full payment upfront?</FormLabel>
+                                            <FormControl>
+                                              <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="w-full justify-between"
+                                                onClick={() => field.onChange(field.value === "1" ? "0" : "1")}
+                                              >
+                                                {field.value === "1" ? "Yes" : "No — pay on pickup"}
+                                              </Button>
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+
+                                <FormField
+                                  control={form.control}
+                                  name={`purchaseDetails.${index}.variantStatus`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Variant</FormLabel>
+                                      <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="regular">Regular</SelectItem>
+                                          <SelectItem value="chase">Chase</SelectItem>
+                                          <SelectItem value="combo">Combo (chase + regular)</SelectItem>
+                                          <SelectItem value="unknown">Unknown — reveal later (random chase)</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

@@ -450,7 +450,7 @@ export function EditPurchaseModal({
           pre_order_status: data.preOrderStatus || null,
           pre_order_date: formatDateForDatabase(data.preOrderDate),
           payment_status: data.paymentStatus || null,
-          payment_method: data.paymentMethod || null,
+          payment_method: data.paymentMethod && data.paymentMethod !== "none" ? data.paymentMethod : null,
           payment_date: formatDateForDatabase(data.paymentDate),
           arrival_date: formatDateForDatabase(data.arrivalDate),
           url_link: data.urlLink || null,
@@ -572,6 +572,7 @@ export function EditPurchaseModal({
   ]
 
   const paymentMethodLOVItems: LOVItem[] = [
+    { id: "none", label: "Not specified" },
     { id: "cash", label: "Cash" },
     { id: "qr_payment", label: "QR Payment" },
     { id: "credit_card", label: "Credit Card" },

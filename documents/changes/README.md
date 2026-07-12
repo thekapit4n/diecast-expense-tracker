@@ -2,6 +2,17 @@
 
 Use this folder to record project updates day by day in simple English.
 
+## Log Index
+
+| Date | Summary |
+|------|---------|
+| [2026-04-26](2026-04-26.md) | Mini GT image import — five default slots, better filtering |
+| [2026-05-17](2026-05-17.md) | Diecast Catalog page, public image API, catalog link in grids |
+| [2026-05-18](2026-05-18.md) | Unified icy-blue theme, catalog scroll/infinite load, AG Grid polish |
+| [2026-06-12](2026-06-12.md) | Catalog brand navigation, image cache busting, multi-brand link icon |
+| [2026-06-18](2026-06-18.md) | Purchase price accepts RM 0.00 |
+| [2026-07-12](2026-07-12.md) | Pre-order Tracker, PO order DB, amount_paid dashboard, safe delete |
+
 ## File Naming Rule
 
 Always create one file per day using this format:

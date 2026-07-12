@@ -9,6 +9,7 @@ import {
   Store,
   PackageSearch,
   LayoutGrid,
+  Truck,
 } from "lucide-react"
 
 export interface NavItem {
@@ -39,6 +40,7 @@ export const navGroups: NavGroup[] = [
     items: [
       { href: "/purchase/list", label: "List", icon: ShoppingCart },
       { href: "/purchase/add", label: "New Purchase", icon: PlusCircle },
+      { href: "/purchase/preorders", label: "Pre-order Tracker", icon: Truck },
     ],
   },
   {
