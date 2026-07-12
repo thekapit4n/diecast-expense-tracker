@@ -5,6 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { RefreshCw, Truck, MessageCircle, Facebook, Instagram, ExternalLink, Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { cn, formatDateForDatabase } from "@/lib/utils"
@@ -36,6 +44,7 @@ interface PoTrackerRow {
   po_channel: string | null
   po_eta: string | null
   po_close_date: string | null
+  po_order_date: string | null
   po_source_link: string | null
   shop_name: string | null
 }
@@ -119,6 +128,8 @@ export function PreorderTracker() {
   const [statusModalItem, setStatusModalItem] = useState<PoStatusModalItem | null>(null)
   const [bulkCollectTarget, setBulkCollectTarget] = useState<{ shopName: string; ids: string[] } | null>(null)
   const [orderSearch, setOrderSearch] = useState("")
+  const [orderTab, setOrderTab] = useState<"pending" | "collected">("pending")
+  const [orderSort, setOrderSort] = useState<"date" | "name">("date")
 
   const fetchRows = useCallback(async () => {
     try {
@@ -129,7 +140,7 @@ export function PreorderTracker() {
           variant_status, packaging_type, ready_date, pickup_deadline, collected_date, collection_id,
           po_order_id,
           tbl_collection!inner(name, item_no),
-          tbl_po_order!inner(id, reference, channel, eta, po_close_date, source_link, tbl_shop_information(shop_name))
+          tbl_po_order!inner(id, reference, channel, eta, po_close_date, order_date, source_link, tbl_shop_information(shop_name))
         `)
         .not("po_order_id", "is", null)
         .order("created_at", { ascending: false })
@@ -158,6 +169,7 @@ export function PreorderTracker() {
         po_channel: row.tbl_po_order?.channel ?? null,
         po_eta: row.tbl_po_order?.eta ?? null,
         po_close_date: row.tbl_po_order?.po_close_date ?? null,
+        po_order_date: row.tbl_po_order?.order_date ?? null,
         po_source_link: row.tbl_po_order?.source_link ?? null,
         shop_name: row.tbl_po_order?.tbl_shop_information?.shop_name ?? null,
       }))
@@ -219,8 +231,29 @@ export function PreorderTracker() {
       if (!map.has(row.po_order_id)) map.set(row.po_order_id, [])
       map.get(row.po_order_id)!.push(row)
     }
-    return Array.from(map.values())
-  }, [rows, orderSearch])
+
+    const groups = Array.from(map.values()).filter((items) => {
+      const allCollected = items.every((item) => item.collected_date)
+      return orderTab === "collected" ? allCollected : !allCollected
+    })
+
+    groups.sort((a, b) => {
+      if (orderSort === "name") {
+        const nameA = a[0].po_reference || a[0].shop_name || a[0].collection_name
+        const nameB = b[0].po_reference || b[0].shop_name || b[0].collection_name
+        return nameA.localeCompare(nameB)
+      }
+      // Newest order date first; orders without a date sink to the bottom.
+      const dateA = a[0].po_order_date
+      const dateB = b[0].po_order_date
+      if (!dateA && !dateB) return 0
+      if (!dateA) return 1
+      if (!dateB) return -1
+      return dateB.localeCompare(dateA)
+    })
+
+    return groups
+  }, [rows, orderSearch, orderTab, orderSort])
 
   const toggleSelected = (id: string) => {
     setSelectedIds((prev) => {
@@ -382,16 +415,34 @@ export function PreorderTracker() {
       )}
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm font-medium text-muted-foreground">All orders</p>
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={orderSearch}
-              onChange={(e) => setOrderSearch(e.target.value)}
-              placeholder="Search by name or item number..."
-              className="pl-8"
-            />
+        <p className="text-sm font-medium text-muted-foreground">All orders</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Tabs value={orderTab} onValueChange={(v) => setOrderTab(v as "pending" | "collected")}>
+            <TabsList>
+              <TabsTrigger value="pending">Pending</TabsTrigger>
+              <TabsTrigger value="collected">Collected</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="flex items-center gap-2">
+            <div className="relative w-full max-w-xs">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={orderSearch}
+                onChange={(e) => setOrderSearch(e.target.value)}
+                placeholder="Search by name or item number..."
+                className="pl-8"
+              />
+            </div>
+            <Select value={orderSort} onValueChange={(v) => setOrderSort(v as "date" | "name")}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Pre-order date</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         {isLoading ? (
@@ -401,6 +452,8 @@ export function PreorderTracker() {
             <CardContent className="py-8 text-center text-sm text-muted-foreground">
               {orderSearch.trim()
                 ? `No items match "${orderSearch.trim()}".`
+                : orderTab === "collected"
+                ? "No collected orders yet."
                 : "No PO orders tracked yet. Link a purchase to a PO order from Add Purchase to start tracking."}
             </CardContent>
           </Card>

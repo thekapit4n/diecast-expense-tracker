@@ -149,7 +149,7 @@ export function PoStatusModal({ item, onOpenChange, onSuccess }: PoStatusModalPr
 
   return (
     <Dialog open={!!item} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Update pickup status</DialogTitle>
           <DialogDescription>{item?.collectionName}</DialogDescription>

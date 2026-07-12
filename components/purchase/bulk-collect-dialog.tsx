@@ -51,28 +51,31 @@ export function BulkCollectDialog({ shopName, items, onOpenChange, onConfirm }: 
 
   return (
     <Dialog open={open} onOpenChange={(next) => !isSubmitting && onOpenChange(next)}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-x-hidden overflow-y-auto">
+        <DialogHeader className="min-w-0">
           <DialogTitle>Mark as collected</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="min-w-0 break-words">
             {items.length} item{items.length > 1 ? "s" : ""} at {shopName}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-md border border-dashed">
+        <div className="min-w-0 w-full rounded-md border border-dashed">
           {items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between px-3 py-2 border-b last:border-b-0 text-sm">
-              <span className="truncate">{item.label}</span>
+            <div
+              key={item.id}
+              className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 border-b last:border-b-0 text-sm"
+            >
+              <span className="min-w-0 truncate">{item.label}</span>
               <span className="text-muted-foreground whitespace-nowrap">RM {item.totalPrice.toFixed(2)}</span>
             </div>
           ))}
-          <div className="flex items-center justify-between px-3 py-2 border-t font-semibold text-sm">
+          <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 border-t font-semibold text-sm">
             <span>Total</span>
             <span>RM {total.toFixed(2)}</span>
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label>How did you pay for this visit?</Label>
           <Select value={paymentMethod} onValueChange={setPaymentMethod}>
             <SelectTrigger>

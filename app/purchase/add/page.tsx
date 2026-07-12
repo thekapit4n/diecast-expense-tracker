@@ -391,6 +391,10 @@ export default function AddPurchasePage() {
       form.setValue("itemNo", collection.item_no || "")
       form.setValue("brandId", collection.brand_id.toString())
       form.setValue("scale", collection.scale || "1:64")
+      // Keep the Item Number combobox's own display in sync — it renders
+      // itemNoSearchInput, not the itemNo form field, so without this it
+      // stays visually blank even though the form value is set correctly.
+      setItemNoSearchInput(collection.item_no || "")
       console.log("Selected existing collection:", collection.id, collection.name)
     } else {
       setIsCollectionSelected(false)

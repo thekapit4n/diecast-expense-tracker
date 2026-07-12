@@ -5,7 +5,8 @@ import Image from "next/image"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw, ShoppingBag, CalendarDays, Package } from "lucide-react"
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, ShoppingBag, CalendarDays, Package, Copy } from "lucide-react"
+import { toast } from "sonner"
 import { appendImageCacheVersion, stripImageCacheVersion } from "@/lib/collection-images"
 import { cn } from "@/lib/utils"
 import { colors, tw } from "@/lib/theme/diecast-theme"
@@ -33,6 +34,15 @@ function formatDate(dateStr: string | null): string | null {
     })
   } catch {
     return dateStr
+  }
+}
+
+async function copyToClipboard(text: string, label: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success(`Copied ${label}`)
+  } catch {
+    toast.error("Failed to copy")
   }
 }
 
@@ -198,19 +208,33 @@ export default function CardDetailSheet({
             <div className="flex-1 overflow-y-auto">
               <div className="px-5 pt-4">
                 <DrawerHeader className="p-0">
-                  <DrawerTitle className={cn("text-left text-lg font-bold leading-snug", tw.textTitle)}>
-                    {item.name}
+                  <DrawerTitle asChild>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(item.name, "title")}
+                      className={cn(
+                        "group flex items-start gap-1.5 text-left text-lg font-bold leading-snug",
+                        tw.textTitle
+                      )}
+                      title="Copy title"
+                    >
+                      <span>{item.name}</span>
+                      <Copy className="mt-1 h-3.5 w-3.5 shrink-0 text-[#4B6B88] opacity-0 transition-opacity group-hover:opacity-100" />
+                    </button>
                   </DrawerTitle>
                 </DrawerHeader>
 
                 <div className="mt-2.5 flex flex-wrap gap-2">
                   {item.item_no && (
-                    <Badge
-                      variant="outline"
-                      className={tw.badgeTeal}
-                    >
-                      {item.item_no}
-                    </Badge>
+                    <button type="button" onClick={() => copyToClipboard(item.item_no!, "item number")} title="Copy item number">
+                      <Badge
+                        variant="outline"
+                        className={cn(tw.badgeTeal, "cursor-pointer gap-1")}
+                      >
+                        {item.item_no}
+                        <Copy className="h-2.5 w-2.5" />
+                      </Badge>
+                    </button>
                   )}
                   <Badge
                     variant="outline"
