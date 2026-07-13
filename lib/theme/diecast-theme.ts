@@ -90,6 +90,8 @@ export const tw = {
   accentBgFaint: "bg-primary/15",
   ownedBorder: "border-[#669a62]/40 hover:border-[#669a62]/80",
   ownedBadge: "bg-[#669a62] text-[#0b1822]",
+  preOrderBorder: "border-amber-500/40 hover:border-amber-500/80",
+  preOrderBadge: "bg-amber-500 text-[#0b1822]",
   pillActive: "bg-primary text-primary-foreground shadow-[0_0_12px_rgba(60,100,123,0.55)]",
   pillInactive:
     "border border-border bg-card text-title-highlight hover:border-primary hover:text-title-highlight",

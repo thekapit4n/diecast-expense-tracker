@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { tw } from "@/lib/theme/diecast-theme"
-import type { CatalogBrand } from "../page"
+import type { CatalogBrand } from "@/lib/catalog-types"
 
 export type SortOption = "name_asc" | "name_desc" | "series_asc"
+export type StatusOption = "all" | "owned" | "pre_order" | "not_owned"
 
 export interface FilterState {
   brands: string[]
   scales: string[]
+  status: StatusOption
   sort: SortOption
 }
 
@@ -29,6 +31,13 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "name_asc", label: "Name A–Z" },
   { value: "name_desc", label: "Name Z–A" },
   { value: "series_asc", label: "Series No." },
+]
+
+const STATUS_OPTIONS: { value: StatusOption; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "owned", label: "Owned" },
+  { value: "pre_order", label: "Pre-order" },
+  { value: "not_owned", label: "Not owned" },
 ]
 
 function PillButton({
@@ -87,7 +96,7 @@ export default function FilterSortSheet({
   }
 
   function handleReset() {
-    const reset: FilterState = { brands: [], scales: [], sort: "name_asc" }
+    const reset: FilterState = { brands: [], scales: [], status: "all", sort: "name_asc" }
     setDraft(reset)
     onChange(reset)
     onClose()
@@ -122,6 +131,21 @@ export default function FilterSortSheet({
                 key={opt.value}
                 active={draft.sort === opt.value}
                 onClick={() => setDraft((prev) => ({ ...prev, sort: opt.value }))}
+              >
+                {opt.label}
+              </PillButton>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-5 pt-5">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Status</p>
+          <div className="flex flex-wrap gap-2">
+            {STATUS_OPTIONS.map((opt) => (
+              <PillButton
+                key={opt.value}
+                active={draft.status === opt.value}
+                onClick={() => setDraft((prev) => ({ ...prev, status: opt.value }))}
               >
                 {opt.label}
               </PillButton>

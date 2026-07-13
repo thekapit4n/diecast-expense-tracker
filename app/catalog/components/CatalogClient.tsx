@@ -12,7 +12,7 @@ import BrandTabs from "./BrandTabs"
 import DiecastCard from "./DiecastCard"
 import CardDetailSheet from "./CardDetailSheet"
 import FilterSortSheet, { type FilterState } from "./FilterSortSheet"
-import type { CatalogBrand, CatalogItem } from "../page"
+import type { CatalogBrand, CatalogItem } from "@/lib/catalog-types"
 
 interface CatalogClientProps {
   items: CatalogItem[]
@@ -103,6 +103,7 @@ export default function CatalogClient({
   const [filters, setFilters] = useState<FilterState>({
     brands: activeBrand ? [activeBrand] : [],
     scales: [],
+    status: "all",
     sort: isMiniGTBrand(activeBrand) ? "series_asc" : "name_asc",
   })
 
@@ -134,7 +135,10 @@ export default function CatalogClient({
   }, [items])
 
   const activeFilterCount =
-    filters.brands.length + filters.scales.length + (filters.sort !== "name_asc" ? 1 : 0)
+    filters.brands.length +
+    filters.scales.length +
+    (filters.status !== "all" ? 1 : 0) +
+    (filters.sort !== "name_asc" ? 1 : 0)
 
   const filtered = useMemo(() => {
     let list = [...items]
@@ -146,6 +150,13 @@ export default function CatalogClient({
     }
     if (filters.scales.length > 0) {
       list = list.filter((i) => i.scale && filters.scales.includes(i.scale))
+    }
+    if (filters.status === "owned") {
+      list = list.filter((i) => i.totalQty > 0)
+    } else if (filters.status === "pre_order") {
+      list = list.filter((i) => i.preOrderQty > 0)
+    } else if (filters.status === "not_owned") {
+      list = list.filter((i) => i.totalQty === 0 && i.preOrderQty === 0)
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase()
@@ -327,7 +338,7 @@ export default function CatalogClient({
           <button
             type="button"
             onClick={() => {
-              handleFiltersChange({ brands: [], scales: [], sort: "name_asc" })
+              handleFiltersChange({ brands: [], scales: [], status: "all", sort: "name_asc" })
               handleSearchChange("")
             }}
             className={cn("text-xs hover:underline", tw.accent)}

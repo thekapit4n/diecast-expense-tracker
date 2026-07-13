@@ -1,43 +1,8 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { buildCatalogItemImageUrls } from "@/lib/collection-images"
+import { isOwnedPurchase, isPreOrderPurchase } from "@/lib/catalog-ownership"
+import type { CatalogItem, CatalogBrand, PurchaseRecord } from "@/lib/catalog-types"
 import CatalogClient from "./components/CatalogClient"
-
-/* -------------------------------------------------------------------------
- * Types
- * ---------------------------------------------------------------------- */
-export interface PurchaseRecord {
-  quantity: number
-  pricePerUnit: number | null
-  totalPrice: number | null
-  shopName: string | null
-  platform: string | null
-  paymentDate: string | null
-  isChase: boolean
-}
-
-export interface CatalogItem {
-  id: string
-  name: string
-  item_no: string | null
-  scale: string | null
-  remark: string | null
-  brand_name: string
-  brand_id: number | null
-  imageUrls: string[]
-  imageVersion: number | null
-  /* individual purchase records — sorted by price desc in detail view */
-  purchases: PurchaseRecord[]
-  /* aggregated for card display */
-  totalQty: number
-  isChase: boolean
-  /* detail flags */
-  isCase: boolean
-}
-
-export interface CatalogBrand {
-  id: number
-  name: string
-}
 
 /* -------------------------------------------------------------------------
  * Page (Server Component)
@@ -72,7 +37,9 @@ export default async function CatalogPage({
 
     supabase
       .from("tbl_purchase")
-      .select("collection_id, quantity, price_per_unit, total_price, is_chase, shop_name, platform, payment_date"),
+      .select(
+        "collection_id, quantity, price_per_unit, total_price, is_chase, shop_name, platform, payment_date, payment_status, collected_date, po_order_id"
+      ),
 
     supabase
       .from("tbl_collection_detail")
@@ -89,6 +56,9 @@ export default async function CatalogPage({
     shop_name: string | null
     platform: string | null
     payment_date: string | null
+    payment_status: string | null
+    collected_date: string | null
+    po_order_id: string | null
   }
 
   const purchaseMap = new Map<string, PurchaseRecord[]>()
@@ -103,6 +73,9 @@ export default async function CatalogPage({
       platform: p.platform ?? null,
       paymentDate: p.payment_date ?? null,
       isChase: p.is_chase === true,
+      paymentStatus: p.payment_status ?? null,
+      collectedDate: p.collected_date ?? null,
+      poOrderId: p.po_order_id ?? null,
     }
     const list = purchaseMap.get(p.collection_id)
     if (list) {
@@ -164,7 +137,8 @@ export default async function CatalogPage({
       }),
       imageVersion,
       purchases,
-      totalQty: purchases.reduce((sum, p) => sum + p.quantity, 0),
+      totalQty: purchases.reduce((sum, p) => sum + (isOwnedPurchase(p) ? p.quantity : 0), 0),
+      preOrderQty: purchases.reduce((sum, p) => sum + (isPreOrderPurchase(p) ? p.quantity : 0), 0),
       isChase: purchases.some((p) => p.isChase),
       isCase: detail?.isCase ?? false,
     }

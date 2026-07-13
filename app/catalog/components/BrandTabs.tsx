@@ -3,7 +3,7 @@
 import { useRef } from "react"
 import { cn } from "@/lib/utils"
 import { tw } from "@/lib/theme/diecast-theme"
-import type { CatalogBrand } from "../page"
+import type { CatalogBrand } from "@/lib/catalog-types"
 
 interface BrandTabsProps {
   brands: CatalogBrand[]

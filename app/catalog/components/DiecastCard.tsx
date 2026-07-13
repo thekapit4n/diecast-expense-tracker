@@ -5,7 +5,7 @@ import Image from "next/image"
 import { stripImageCacheVersion } from "@/lib/collection-images"
 import { cn } from "@/lib/utils"
 import { tw } from "@/lib/theme/diecast-theme"
-import type { CatalogItem } from "../page"
+import type { CatalogItem } from "@/lib/catalog-types"
 
 interface DiecastCardProps {
   item: CatalogItem
@@ -28,7 +28,11 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
         "group relative flex w-full flex-col overflow-hidden rounded-2xl border bg-card",
         "transition-all duration-200 active:scale-[0.97]",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        item.totalQty > 0 ? tw.ownedBorder : "border-border hover:border-[#2a4555]"
+        item.totalQty > 0
+          ? tw.ownedBorder
+          : item.preOrderQty > 0
+          ? tw.preOrderBorder
+          : "border-border hover:border-[#2a4555]"
       )}
     >
       <div className="relative aspect-square w-full overflow-hidden bg-[#0e1c28]">
@@ -63,13 +67,19 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
           </div>
         )}
 
-        {item.totalQty > 0 && (
+        {item.totalQty > 0 ? (
           <div className="absolute left-2 top-2">
             <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide shadow", tw.ownedBadge)}>
               Owned
             </span>
           </div>
-        )}
+        ) : item.preOrderQty > 0 ? (
+          <div className="absolute left-2 top-2">
+            <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide shadow", tw.preOrderBadge)}>
+              Pre-order
+            </span>
+          </div>
+        ) : null}
 
         {item.scale && (
           <div className="absolute bottom-2 right-2">

@@ -128,7 +128,7 @@ export function PreorderTracker() {
   const [statusModalItem, setStatusModalItem] = useState<PoStatusModalItem | null>(null)
   const [bulkCollectTarget, setBulkCollectTarget] = useState<{ shopName: string; ids: string[] } | null>(null)
   const [orderSearch, setOrderSearch] = useState("")
-  const [orderTab, setOrderTab] = useState<"pending" | "collected">("pending")
+  const [orderTab, setOrderTab] = useState<"pending" | "ready" | "collected">("pending")
   const [orderSort, setOrderSort] = useState<"date" | "name">("date")
 
   const fetchRows = useCallback(async () => {
@@ -234,7 +234,10 @@ export function PreorderTracker() {
 
     const groups = Array.from(map.values()).filter((items) => {
       const allCollected = items.every((item) => item.collected_date)
-      return orderTab === "collected" ? allCollected : !allCollected
+      if (orderTab === "collected") return allCollected
+      if (allCollected) return false
+      const hasReadyItem = items.some((item) => item.ready_date && !item.collected_date)
+      return orderTab === "ready" ? hasReadyItem : !hasReadyItem
     })
 
     groups.sort((a, b) => {
@@ -417,9 +420,10 @@ export function PreorderTracker() {
       <div className="space-y-3">
         <p className="text-sm font-medium text-muted-foreground">All orders</p>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Tabs value={orderTab} onValueChange={(v) => setOrderTab(v as "pending" | "collected")}>
+          <Tabs value={orderTab} onValueChange={(v) => setOrderTab(v as "pending" | "ready" | "collected")}>
             <TabsList>
               <TabsTrigger value="pending">Pending</TabsTrigger>
+              <TabsTrigger value="ready">Ready for pickup</TabsTrigger>
               <TabsTrigger value="collected">Collected</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -454,6 +458,8 @@ export function PreorderTracker() {
                 ? `No items match "${orderSearch.trim()}".`
                 : orderTab === "collected"
                 ? "No collected orders yet."
+                : orderTab === "ready"
+                ? "Nothing ready for pickup right now."
                 : "No PO orders tracked yet. Link a purchase to a PO order from Add Purchase to start tracking."}
             </CardContent>
           </Card>

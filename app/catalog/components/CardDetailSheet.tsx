@@ -10,7 +10,8 @@ import { toast } from "sonner"
 import { appendImageCacheVersion, stripImageCacheVersion } from "@/lib/collection-images"
 import { cn } from "@/lib/utils"
 import { colors, tw } from "@/lib/theme/diecast-theme"
-import type { CatalogItem, PurchaseRecord } from "../page"
+import { isPreOrderPurchase } from "@/lib/catalog-ownership"
+import type { CatalogItem, PurchaseRecord } from "@/lib/catalog-types"
 
 interface CardDetailSheetProps {
   item: CatalogItem | null
@@ -102,6 +103,7 @@ export default function CardDetailSheet({
 
   const sortedPurchases = item ? sortByPriceDesc(item.purchases) : []
   const totalQty = item?.totalQty ?? 0
+  const preOrderQty = item?.preOrderQty ?? 0
 
   return (
     <Drawer open={!!item} onClose={onClose}>
@@ -271,22 +273,41 @@ export default function CardDetailSheet({
                     >
                       Purchase History
                     </p>
-                    <div
-                      className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
-                      style={{ backgroundColor: colors.owned.faint }}
-                    >
-                      <Package className="h-3 w-3" style={{ color: colors.owned.default }} />
-                      <span className="text-[11px] font-bold" style={{ color: colors.owned.default }}>
-                        {totalQty} {totalQty === 1 ? "unit" : "units"} owned
-                      </span>
+                    <div className="flex items-center gap-2">
+                      {totalQty > 0 && (
+                        <div
+                          className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                          style={{ backgroundColor: colors.owned.faint }}
+                        >
+                          <Package className="h-3 w-3" style={{ color: colors.owned.default }} />
+                          <span className="text-[11px] font-bold" style={{ color: colors.owned.default }}>
+                            {totalQty} {totalQty === 1 ? "unit" : "units"} owned
+                          </span>
+                        </div>
+                      )}
+                      {preOrderQty > 0 && (
+                        <div className="flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1">
+                          <Package className="h-3 w-3 text-amber-400" />
+                          <span className="text-[11px] font-bold text-amber-400">
+                            {preOrderQty} on pre-order
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-2">
                     {sortedPurchases.map((p, idx) => {
                       const date = formatDate(p.paymentDate)
+                      const isPreOrder = isPreOrderPurchase(p)
                       return (
-                        <div key={idx} className="rounded-xl border border-border bg-background p-3">
+                        <div
+                          key={idx}
+                          className={cn(
+                            "rounded-xl border p-3",
+                            isPreOrder ? "border-amber-500/30 bg-amber-500/[0.04]" : "border-border bg-background"
+                          )}
+                        >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5">
@@ -294,6 +315,11 @@ export default function CardDetailSheet({
                                 <p className="truncate text-[12px] font-semibold text-[#E2E8F0]">
                                   {p.shopName ?? "—"}
                                 </p>
+                                {isPreOrder && (
+                                  <span className="shrink-0 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0b1822]">
+                                    Pre-order
+                                  </span>
+                                )}
                               </div>
                               {p.platform && (
                                 <p className="mt-0.5 pl-[18px] text-[10px] text-[#64748B]">
