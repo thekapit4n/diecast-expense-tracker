@@ -353,11 +353,12 @@ export default function AddPurchasePage() {
 
   // Toggle collapsible section
   const toggleSection = (index: number, section: 'poOrder' | 'additional') => {
+    const currentlyCollapsed = isSectionCollapsed(index, section)
     setCollapsedSections(prev => ({
       ...prev,
       [index]: {
         ...prev[index],
-        [section]: !prev[index]?.[section]
+        [section]: !currentlyCollapsed
       }
     }))
   }
