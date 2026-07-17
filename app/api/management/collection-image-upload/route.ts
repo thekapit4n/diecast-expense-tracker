@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
     const collectionId = String(formData.get("collectionId") || "").trim()
     const itemNo = String(formData.get("itemNo") || "").trim()
     const collectionName = String(formData.get("collectionName") || "").trim()
+    const isChase = String(formData.get("isChase") || "") === "1"
     const files = formData
       .getAll("files")
       .filter((entry): entry is File => entry instanceof File && entry.size > 0)
@@ -168,7 +169,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let nextIndex = getNextImageIndex(collection?.remark || null, brandSlug, folderKey)
+    let nextIndex = getNextImageIndex(collection?.remark || null, brandSlug, folderKey, isChase)
     const savedUrls: string[] = []
 
     for (const file of files) {
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
       const extension =
         getExtensionFromFileName(file.name) || getExtensionFromMimeType(file.type || "image/jpeg")
       const fileName = `${nextIndex}${extension}`
-      const storagePath = getStoragePath(brandSlug, folderKey, fileName)
+      const storagePath = getStoragePath(brandSlug, folderKey, fileName, isChase)
       const arrayBuffer = await file.arrayBuffer()
 
       const { error: uploadError } = await supabase.storage
@@ -191,7 +192,7 @@ export async function POST(request: NextRequest) {
 
       if (uploadError) continue
 
-      savedUrls.push(buildCatalogImageUrl(brandSlug, folderKey, fileName))
+      savedUrls.push(buildCatalogImageUrl(brandSlug, folderKey, fileName, isChase))
       nextIndex += 1
     }
 
@@ -222,6 +223,7 @@ export async function POST(request: NextRequest) {
       brandSlug,
       folderKey,
       folderKeySource,
+      isChase,
       uploadedCount: savedUrls.length,
       imageUrls: savedUrls,
       linkedCollection: !!collection?.id,

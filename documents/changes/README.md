@@ -12,6 +12,7 @@ Use this folder to record project updates day by day in simple English.
 | [2026-06-12](2026-06-12.md) | Catalog brand navigation, image cache busting, multi-brand link icon |
 | [2026-06-18](2026-06-18.md) | Purchase price accepts RM 0.00 |
 | [2026-07-12](2026-07-12.md) | Pre-order Tracker, PO order DB, amount_paid dashboard, safe delete |
+| [2026-07-18](2026-07-18.md) | Chase vs normal diecast photos and catalog tiles split apart |
 
 ## File Naming Rule
 

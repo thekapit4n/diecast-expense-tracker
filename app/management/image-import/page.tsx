@@ -6,6 +6,13 @@ import { tw } from "@/lib/theme/diecast-theme"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { createClient } from "@/lib/supabase/client"
 import { BrandCombobox } from "@/components/ui/brand-combobox"
 import { CollectionCombobox, type CollectionOption } from "@/components/ui/collection-combobox"
@@ -24,6 +31,7 @@ interface UploadResult {
   brandSlug: string
   folderKey: string
   folderKeySource: "item_no" | "name"
+  isChase: boolean
   uploadedCount: number
   imageUrls: string[]
   linkedCollection: boolean
@@ -51,6 +59,7 @@ export default function ImageImportPage() {
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
   const [collectionNameInput, setCollectionNameInput] = useState("")
   const [itemNo, setItemNo] = useState("")
+  const [isChase, setIsChase] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
@@ -180,6 +189,7 @@ export default function ImageImportPage() {
     setSelectedCollectionId(null)
     setCollectionNameInput("")
     setItemNo("")
+    setIsChase(false)
     setUploadResult(null)
   }
 
@@ -282,6 +292,7 @@ export default function ImageImportPage() {
       if (collectionNameInput.trim()) {
         formData.append("collectionName", collectionNameInput.trim())
       }
+      formData.append("isChase", isChase ? "1" : "0")
       selectedFiles.forEach((file) => formData.append("files", file))
 
       const response = await fetch("/api/management/collection-image-upload", {
@@ -369,7 +380,7 @@ export default function ImageImportPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 Item Number <span className="font-normal text-muted-foreground">(optional)</span>
@@ -385,12 +396,35 @@ export default function ImageImportPage() {
             </div>
 
             <div className="space-y-2">
+              <label className="text-sm font-medium">Is Chase?</label>
+              <Select
+                value={isChase ? "1" : "0"}
+                onValueChange={(value) => {
+                  setIsChase(value === "1")
+                  setUploadResult(null)
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">No — normal release</SelectItem>
+                  <SelectItem value="1">Yes — chase variant</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Chase photos are stored separately so they don&apos;t mix with the normal release.
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <label className="text-sm font-medium">Storage Preview</label>
               <div className="rounded-md border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
                 {resolvedFolder && selectedBrand ? (
                   <>
                     <span className="font-mono text-foreground">
                       {brandStorageSlug}/{resolvedFolder.folderKey}
+                      {isChase ? "/chase" : ""}
                     </span>
                     <span className="mt-1 block text-xs">
                       Using {resolvedFolder.source === "item_no" ? "item number" : "model name"}
@@ -476,6 +510,7 @@ export default function ImageImportPage() {
               <p className="font-medium">Uploaded {uploadResult.uploadedCount} image(s)</p>
               <p className="text-muted-foreground">
                 {uploadResult.brandSlug}/{uploadResult.folderKey}
+                {uploadResult.isChase ? "/chase" : ""}
                 {" "}
                 ({uploadResult.folderKeySource === "item_no" ? "item number" : "model name"})
               </p>

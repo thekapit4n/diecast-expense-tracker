@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -32,6 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { toast } from "sonner"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { cn, formatDateForDatabase } from "@/lib/utils"
@@ -117,10 +118,6 @@ export default function AddPurchasePage() {
   const [collapsedSections, setCollapsedSections] = useState<Record<number, { poOrder: boolean, additional: boolean }>>({})
   const [poOrderSearchInput, setPoOrderSearchInput] = useState<Record<number, string>>({})
   const [isCollectionSelected, setIsCollectionSelected] = useState(false)
-  const [miniGtProductUrl, setMiniGtProductUrl] = useState("")
-  const [isImportingMiniGtImage, setIsImportingMiniGtImage] = useState(false)
-  const [isCheckingMiniGtImage, setIsCheckingMiniGtImage] = useState(false)
-  const [hasMiniGtImage, setHasMiniGtImage] = useState(false)
   const { getInsertFields } = useUserTracking()
 
   const form = useForm<PurchaseFormValues>({
@@ -295,12 +292,6 @@ export default function AddPurchasePage() {
   const selectedBrandId = form.watch("brandId")
   const selectedBrand = brands.find(b => b.id.toString() === selectedBrandId)
   const isDioramaBrand = selectedBrand?.type === "Diorama"
-  const isMiniGtBrand = (selectedBrand?.name || "").toLowerCase().includes("mini gt")
-  const itemNoValue = form.watch("itemNo")
-  const miniGtSeries = useMemo(() => {
-    const normalizedItemNo = (itemNoValue || "").trim().toUpperCase()
-    return normalizedItemNo.match(/MGT\d{5}/)?.[0] || ""
-  }, [itemNoValue])
 
   // Calculate total prices
   const purchaseDetailsValues = form.watch("purchaseDetails")
@@ -310,77 +301,6 @@ export default function AddPurchasePage() {
     return qty * price
   })
   const grandTotal = totalPrices.reduce((sum, price) => sum + price, 0)
-
-  useEffect(() => {
-    const checkMiniGtImage = async () => {
-      if (!isMiniGtBrand || !miniGtSeries) {
-        setHasMiniGtImage(false)
-        return
-      }
-
-      setIsCheckingMiniGtImage(true)
-      try {
-        const { data, error } = await supabase
-          .from("tbl_collection")
-          .select("remark")
-          .ilike("item_no", `${miniGtSeries}%`)
-          .limit(5)
-
-        if (error) {
-          setHasMiniGtImage(false)
-          return
-        }
-
-        const imagePathPrefix = `/api/mini-gt/image/${miniGtSeries}/`
-        const matchedRecord = (data || []).some((item: { remark?: string | null }) =>
-          (item.remark || "").includes(imagePathPrefix)
-        )
-        setHasMiniGtImage(matchedRecord)
-      } finally {
-        setIsCheckingMiniGtImage(false)
-      }
-    }
-
-    checkMiniGtImage()
-  }, [isMiniGtBrand, miniGtSeries, supabase])
-
-  const handleMiniGtImageImport = async () => {
-    if (!miniGtSeries) {
-      toast.error("Item Number must contain series like MGT00009")
-      return
-    }
-
-    if (!miniGtProductUrl.trim()) {
-      return
-    }
-
-    setIsImportingMiniGtImage(true)
-    try {
-      const response = await fetch("/api/management/mini-gt-import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          series: miniGtSeries,
-          productUrl: miniGtProductUrl.trim(),
-        }),
-      })
-
-      const payload = await response.json()
-      if (!response.ok) {
-        toast.error(payload.error || "Import failed")
-        return
-      }
-
-      setHasMiniGtImage(true)
-      setMiniGtProductUrl("")
-      toast.success(`Imported ${payload.importedCount} image(s) for ${miniGtSeries}`)
-    } catch (error) {
-      console.error("Mini GT image import failed:", error)
-      toast.error("Unexpected import error")
-    } finally {
-      setIsImportingMiniGtImage(false)
-    }
-  }
 
   // Handle collection selection
   const handleCollectionSelect = (collection: CollectionOption | null) => {
@@ -468,27 +388,6 @@ export default function AddPurchasePage() {
 
     setIsSubmitting(true)
     try {
-      if (isMiniGtBrand && miniGtSeries && !hasMiniGtImage && miniGtProductUrl.trim()) {
-        const importResponse = await fetch("/api/management/mini-gt-import", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            series: miniGtSeries,
-            productUrl: miniGtProductUrl.trim(),
-          }),
-        })
-
-        const importPayload = await importResponse.json()
-        if (!importResponse.ok) {
-          toast.error(importPayload.error || "Failed to import Mini GT image")
-          return
-        }
-
-        setHasMiniGtImage(true)
-        setMiniGtProductUrl("")
-        toast.success(`Imported ${importPayload.importedCount} image(s) for ${miniGtSeries}`)
-      }
-
       let collectionId = data.collectionId
       
       console.log("Submitting with collectionId:", collectionId)
@@ -668,7 +567,14 @@ export default function AddPurchasePage() {
               {/* Collection Information */}
               <div className="space-y-4">
                 <h3 className={tw.sectionHeading}>Collection Information</h3>
-                
+                <p className="text-xs text-muted-foreground">
+                  Need to add or update photos (including chase variants)?{" "}
+                  <Link href="/management/image-import" className="font-medium text-primary underline-offset-2 hover:underline">
+                    Use the Image Import page
+                  </Link>
+                  .
+                </p>
+
                 <div className="space-y-4">
                   <FormField
                     control={form.control}
@@ -825,50 +731,6 @@ export default function AddPurchasePage() {
                     )}
                   </div>
 
-                  {isMiniGtBrand && (
-                    <div className="space-y-3 rounded-md border border-dashed p-4">
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold">Mini GT Image Import</p>
-                        <p className="text-xs text-muted-foreground">
-                          Series is detected from Item Number. If no image exists yet, you can paste an optional product URL to import (now or when you add the purchase). Leave the URL empty to skip import.
-                        </p>
-                        {miniGtSeries ? (
-                          <p className="text-xs text-muted-foreground">Detected series: {miniGtSeries}</p>
-                        ) : (
-                          <p className="text-xs text-destructive">
-                            Enter Item Number with format like MGT00009 to enable import.
-                          </p>
-                        )}
-                        {isCheckingMiniGtImage ? (
-                          <p className="text-xs text-muted-foreground">Checking existing image...</p>
-                        ) : hasMiniGtImage ? (
-                          <p className="text-xs text-owned">Image already exists for this series.</p>
-                        ) : null}
-                      </div>
-
-                      <div className="flex flex-col gap-2 md:flex-row">
-                        <Input
-                          value={miniGtProductUrl}
-                          onChange={(event) => setMiniGtProductUrl(event.target.value)}
-                          placeholder="https://minigt.tsm-models.com/index.php?action=product-detail&id=9"
-                          disabled={hasMiniGtImage || isImportingMiniGtImage}
-                        />
-                        <Button
-                          type="button"
-                          onClick={handleMiniGtImageImport}
-                          disabled={
-                            hasMiniGtImage ||
-                            isImportingMiniGtImage ||
-                            isCheckingMiniGtImage ||
-                            !miniGtSeries ||
-                            !miniGtProductUrl.trim()
-                          }
-                        >
-                          {isImportingMiniGtImage ? "Importing..." : "Import Now (Optional)"}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 

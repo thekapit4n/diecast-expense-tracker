@@ -305,16 +305,25 @@ export default function CardDetailSheet({
                           key={idx}
                           className={cn(
                             "rounded-xl border p-3",
-                            isPreOrder ? "border-amber-500/30 bg-amber-500/[0.04]" : "border-border bg-background"
+                            p.isChase
+                              ? "border-destructive/30 bg-destructive/[0.04]"
+                              : isPreOrder
+                              ? "border-amber-500/30 bg-amber-500/[0.04]"
+                              : "border-border bg-background"
                           )}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex flex-wrap items-center gap-1.5">
                                 <ShoppingBag className="h-3 w-3 shrink-0 text-[#64748B]" />
                                 <p className="truncate text-[12px] font-semibold text-[#E2E8F0]">
                                   {p.shopName ?? "—"}
                                 </p>
+                                {p.isChase && (
+                                  <span className="shrink-0 rounded-full bg-destructive px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                                    Chase
+                                  </span>
+                                )}
                                 {isPreOrder && (
                                   <span className="shrink-0 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0b1822]">
                                     Pre-order
@@ -337,7 +346,12 @@ export default function CardDetailSheet({
                             <div className="shrink-0 text-right">
                               {p.pricePerUnit != null ? (
                                 <>
-                                  <p className="text-sm font-bold text-[#F1F5F9]">
+                                  <p
+                                    className={cn(
+                                      "text-sm font-bold",
+                                      p.isChase ? "text-destructive" : "text-[#F1F5F9]"
+                                    )}
+                                  >
                                     {formatPrice(p.pricePerUnit)}
                                   </p>
                                   <p className="text-[10px] text-[#64748B]">per unit</p>
@@ -355,14 +369,6 @@ export default function CardDetailSheet({
                             <div className="mt-2 border-t border-border pt-2 text-right">
                               <span className="text-[11px] text-[#71717A]">Total: </span>
                               <span className="text-[11px] font-semibold text-[#A1A1AA]">{formatPrice(p.totalPrice)}</span>
-                            </div>
-                          )}
-
-                          {p.isChase && (
-                            <div className="mt-2 border-t border-border pt-2">
-                              <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive">
-                                Chase Unit
-                              </span>
                             </div>
                           )}
                         </div>

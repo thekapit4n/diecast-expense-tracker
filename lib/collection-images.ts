@@ -90,14 +90,26 @@ export function isSafeFileName(fileName: string): boolean {
   return /^\d+\.(jpg|jpeg|png|webp|gif)$/i.test(fileName)
 }
 
-export function getStoragePath(brandSlug: string, folderKey: string, fileName: string): string {
+export function getStoragePath(
+  brandSlug: string,
+  folderKey: string,
+  fileName: string,
+  isChase: boolean = false
+): string {
   const safeFolderKey = brandSlug === "mini-gt" ? folderKey.toUpperCase() : folderKey
-  return `${brandSlug}/${safeFolderKey}/${fileName.toLowerCase()}`
+  const variantSegment = isChase ? "/chase" : ""
+  return `${brandSlug}/${safeFolderKey}${variantSegment}/${fileName.toLowerCase()}`
 }
 
-export function buildCatalogImageUrl(brandSlug: string, folderKey: string, fileName: string): string {
+export function buildCatalogImageUrl(
+  brandSlug: string,
+  folderKey: string,
+  fileName: string,
+  isChase: boolean = false
+): string {
   const safeFolderKey = brandSlug === "mini-gt" ? folderKey.toUpperCase() : folderKey
-  return `/api/catalog/image/${brandSlug}/${safeFolderKey}/${fileName.toLowerCase()}`
+  const variantSegment = isChase ? "/chase" : ""
+  return `/api/catalog/image/${brandSlug}/${safeFolderKey}${variantSegment}/${fileName.toLowerCase()}`
 }
 
 export function stripImageCacheVersion(url: string): string {
@@ -182,7 +194,8 @@ export function getBrandStorageImageUrls(
   brandName: string,
   itemNo: string | null,
   collectionName: string | null,
-  maxSlots: number = DEFAULT_CATALOG_IMAGE_SLOTS
+  maxSlots: number = DEFAULT_CATALOG_IMAGE_SLOTS,
+  isChase: boolean = false
 ): string[] {
   const resolved = resolveFolderKey({
     itemNo,
@@ -193,7 +206,7 @@ export function getBrandStorageImageUrls(
 
   const brandSlug = getBrandStorageSlug(brandName)
   return Array.from({ length: maxSlots }, (_, index) =>
-    buildCatalogImageUrl(brandSlug, resolved.folderKey, `${index + 1}.jpg`)
+    buildCatalogImageUrl(brandSlug, resolved.folderKey, `${index + 1}.jpg`, isChase)
   )
 }
 
@@ -207,12 +220,25 @@ export function buildCatalogItemImageUrls(options: {
   itemNo: string | null
   collectionName: string
   imageVersion?: number | null
+  isChase?: boolean
 }): string[] {
-  const urls = mergeCatalogImageUrls(
-    extractRemarkImageUrls(options.remark),
-    getBrandStorageImageUrls(options.brandName, options.itemNo, options.collectionName),
-    getMiniGtSeriesImageUrls(options.itemNo)
-  )
+  /* Chase-variant photos differ from the normal release despite sharing the
+   * same item code, so a chase tile only ever pulls from its dedicated
+   * `chase/` subfolder — it never falls back to normal-release photos,
+   * since chase and normal are shown as separate catalog tiles. */
+  const urls = options.isChase
+    ? getBrandStorageImageUrls(
+        options.brandName,
+        options.itemNo,
+        options.collectionName,
+        DEFAULT_CATALOG_IMAGE_SLOTS,
+        true
+      )
+    : mergeCatalogImageUrls(
+        extractRemarkImageUrls(options.remark),
+        getBrandStorageImageUrls(options.brandName, options.itemNo, options.collectionName),
+        getMiniGtSeriesImageUrls(options.itemNo)
+      )
 
   if (options.imageVersion == null) {
     return urls
@@ -253,13 +279,16 @@ export function mergeRemarkImageUrls(existingRemark: string | null, newUrls: str
 export function getNextImageIndex(
   remark: string | null,
   brandSlug: string,
-  folderKey: string
+  folderKey: string,
+  isChase: boolean = false
 ): number {
-  const prefixes = [
-    `/api/catalog/image/${brandSlug}/${folderKey}/`,
-    `/api/catalog/image/${folderKey}/`,
-    `/api/mini-gt/image/${folderKey}/`,
-  ]
+  const prefixes = isChase
+    ? [`/api/catalog/image/${brandSlug}/${folderKey}/chase/`]
+    : [
+        `/api/catalog/image/${brandSlug}/${folderKey}/`,
+        `/api/catalog/image/${folderKey}/`,
+        `/api/mini-gt/image/${folderKey}/`,
+      ]
 
   const indices = (remark || "")
     .split("\n")

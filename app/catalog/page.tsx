@@ -43,7 +43,7 @@ export default async function CatalogPage({
 
     supabase
       .from("tbl_collection_detail")
-      .select("collection_id, is_case"),
+      .select("collection_id, is_case, is_chase"),
   ])
 
   /* ---- Group individual purchase records per collection_id ---- */
@@ -85,17 +85,22 @@ export default async function CatalogPage({
     }
   }
 
-  /* ---- Aggregate collection_detail per collection_id ---- */
-  type DetailRow = { collection_id: string | null; is_case: boolean | null }
-  const detailMap = new Map<string, { isCase: boolean }>()
+  /* ---- Aggregate collection_detail per collection_id, split by variant
+   * since chase and normal units render as separate catalog tiles ---- */
+  type DetailRow = { collection_id: string | null; is_case: boolean | null; is_chase: boolean | null }
+  const detailMap = new Map<string, { chaseCase: boolean; normalCase: boolean }>()
 
   for (const d of (detailsRaw ?? []) as DetailRow[]) {
     if (!d.collection_id) continue
-    if (!detailMap.has(d.collection_id)) {
-      detailMap.set(d.collection_id, { isCase: d.is_case === true })
-    } else if (d.is_case) {
-      detailMap.get(d.collection_id)!.isCase = true
+    const entry = detailMap.get(d.collection_id) ?? { chaseCase: false, normalCase: false }
+    if (d.is_case) {
+      if (d.is_chase) {
+        entry.chaseCase = true
+      } else {
+        entry.normalCase = true
+      }
     }
+    detailMap.set(d.collection_id, entry)
   }
 
   /* ---- Build CatalogItem array ---- */
@@ -111,7 +116,9 @@ export default async function CatalogPage({
     tbl_master_brand?: { name: string } | Array<{ name: string }> | null
   }
 
-  const items: CatalogItem[] = ((collectionsRaw ?? []) as CollectionRow[]).map((c) => {
+  const items: CatalogItem[] = []
+
+  for (const c of (collectionsRaw ?? []) as CollectionRow[]) {
     const imageVersion = c.updated_at ?? c.created_at ?? null
     const brandObj = Array.isArray(c.tbl_master_brand)
       ? (c.tbl_master_brand[0] ?? null)
@@ -120,8 +127,11 @@ export default async function CatalogPage({
     const purchases = purchaseMap.get(c.id) ?? []
     const detail = detailMap.get(c.id)
 
-    return {
-      id: c.id,
+    const chasePurchases = purchases.filter((p) => p.isChase)
+    const normalPurchases = purchases.filter((p) => !p.isChase)
+
+    const buildItem = (id: string, itemPurchases: PurchaseRecord[], isChase: boolean, isCase: boolean): CatalogItem => ({
+      id,
       name: c.name,
       item_no: c.item_no,
       scale: c.scale,
@@ -134,15 +144,28 @@ export default async function CatalogPage({
         itemNo: c.item_no,
         collectionName: c.name,
         imageVersion,
+        isChase,
       }),
       imageVersion,
-      purchases,
-      totalQty: purchases.reduce((sum, p) => sum + (isOwnedPurchase(p) ? p.quantity : 0), 0),
-      preOrderQty: purchases.reduce((sum, p) => sum + (isPreOrderPurchase(p) ? p.quantity : 0), 0),
-      isChase: purchases.some((p) => p.isChase),
-      isCase: detail?.isCase ?? false,
+      purchases: itemPurchases,
+      totalQty: itemPurchases.reduce((sum, p) => sum + (isOwnedPurchase(p) ? p.quantity : 0), 0),
+      preOrderQty: itemPurchases.reduce((sum, p) => sum + (isPreOrderPurchase(p) ? p.quantity : 0), 0),
+      isChase,
+      isCase,
+    })
+
+    /* Chase and normal only get separate tiles when the collection actually
+     * has purchases of both — an item with only a chase (or only a normal)
+     * purchase stays a single tile so we don't show empty placeholders. */
+    if (chasePurchases.length > 0 && normalPurchases.length > 0) {
+      items.push(buildItem(`${c.id}::chase`, chasePurchases, true, detail?.chaseCase ?? false))
+      items.push(buildItem(c.id, normalPurchases, false, detail?.normalCase ?? false))
+    } else if (chasePurchases.length > 0) {
+      items.push(buildItem(c.id, chasePurchases, true, detail?.chaseCase ?? false))
+    } else {
+      items.push(buildItem(c.id, normalPurchases, false, detail?.normalCase ?? false))
     }
-  })
+  }
 
   /* ---- Build brands list: only brands that have collection data ---- */
   const brandIdsWithData = new Set(

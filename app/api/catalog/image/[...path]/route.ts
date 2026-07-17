@@ -15,7 +15,9 @@ function isLegacyMiniGtSeries(segment: string): boolean {
   return /^MGT\d{5}$/i.test(segment)
 }
 
-function resolveImagePath(segments: string[]): { brandSlug: string; folderKey: string; fileName: string } | null {
+function resolveImagePath(
+  segments: string[]
+): { brandSlug: string; folderKey: string; fileName: string; isChase: boolean } | null {
   if (segments.length === 2) {
     const [first, fileName] = segments
     if (!isLegacyMiniGtSeries(first) || !isSafeFileName(fileName)) {
@@ -25,11 +27,18 @@ function resolveImagePath(segments: string[]): { brandSlug: string; folderKey: s
       brandSlug: "mini-gt",
       folderKey: first.toUpperCase(),
       fileName: fileName.toLowerCase(),
+      isChase: false,
     }
   }
 
-  if (segments.length === 3) {
-    const [brandSlug, folderKey, fileName] = segments
+  if (segments.length === 3 || segments.length === 4) {
+    const isChase = segments.length === 4
+    const [brandSlug, folderKey, variantOrFileName, fileNameIfChase] = segments
+    if (isChase && variantOrFileName.toLowerCase() !== "chase") {
+      return null
+    }
+
+    const fileName = isChase ? fileNameIfChase : variantOrFileName
     const normalizedBrandSlug = brandSlug.toLowerCase()
     const normalizedFolderKey =
       normalizedBrandSlug === "mini-gt" ? folderKey.toUpperCase() : folderKey
@@ -47,6 +56,7 @@ function resolveImagePath(segments: string[]): { brandSlug: string; folderKey: s
       brandSlug: normalizedBrandSlug,
       folderKey: normalizedFolderKey,
       fileName: safeName,
+      isChase,
     }
   }
 
@@ -103,8 +113,8 @@ export async function GET(
       return NextResponse.json({ error: "Invalid image path" }, { status: 400 })
     }
 
-    const { brandSlug, folderKey, fileName } = resolved
-    const storagePath = getStoragePath(brandSlug, folderKey, fileName)
+    const { brandSlug, folderKey, fileName, isChase } = resolved
+    const storagePath = getStoragePath(brandSlug, folderKey, fileName, isChase)
 
     const supabase = await createServerSupabaseClient()
     const { data: downloadedFile, error: downloadError } = await supabase.storage
