@@ -20,6 +20,7 @@ import { tw } from "@/lib/theme/diecast-theme"
 import { toast } from "sonner"
 import { PoStatusModal, type PoStatusModalItem } from "./po-status-modal"
 import { BulkCollectDialog, type BulkCollectItem } from "./bulk-collect-dialog"
+import { BulkStatusUpdateDialog, type BulkStatusUpdateItem, type BulkStatusUpdateResult } from "./bulk-status-update-dialog"
 import { useUserTracking } from "@/lib/auth/use-user-tracking"
 
 interface PoTrackerRow {
@@ -127,6 +128,8 @@ export function PreorderTracker() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [statusModalItem, setStatusModalItem] = useState<PoStatusModalItem | null>(null)
   const [bulkCollectTarget, setBulkCollectTarget] = useState<{ shopName: string; ids: string[] } | null>(null)
+  const [selectedPendingIds, setSelectedPendingIds] = useState<Set<string>>(new Set())
+  const [bulkPaymentTarget, setBulkPaymentTarget] = useState<string[] | null>(null)
   const [orderSearch, setOrderSearch] = useState("")
   const [orderTab, setOrderTab] = useState<"pending" | "ready" | "collected">("pending")
   const [orderSort, setOrderSort] = useState<"date" | "name">("date")
@@ -265,6 +268,81 @@ export function PreorderTracker() {
       else next.add(id)
       return next
     })
+  }
+
+  // Bulk payment-update selection is scoped to the Pending tab only —
+  // clear it whenever the user switches tabs so a stale selection can't
+  // silently apply to items no longer even visible.
+  useEffect(() => {
+    setSelectedPendingIds(new Set())
+  }, [orderTab])
+
+  const togglePendingSelected = (id: string) => {
+    setSelectedPendingIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const visiblePendingIds = useMemo(
+    () => (orderTab === "pending" ? ordersGrouped.flat().map((item) => item.id) : []),
+    [ordersGrouped, orderTab]
+  )
+  const allPendingSelected =
+    visiblePendingIds.length > 0 && visiblePendingIds.every((id) => selectedPendingIds.has(id))
+
+  const toggleSelectAllPending = () => {
+    setSelectedPendingIds(allPendingSelected ? new Set() : new Set(visiblePendingIds))
+  }
+
+  const handleBulkStatusUpdate = async (result: BulkStatusUpdateResult) => {
+    if (!bulkPaymentTarget || bulkPaymentTarget.length === 0) return
+    try {
+      const updateFields = getUpdateFields()
+      const targetRows = rows.filter((r) => bulkPaymentTarget.includes(r.id))
+
+      // Mirrors the single-item PoStatusModal's save logic, applied per row.
+      const resolvedPaymentDate =
+        result.paymentDate ??
+        (result.paymentStatus === "paid" || result.paymentStatus === "partial"
+          ? result.collectedDate ?? new Date()
+          : undefined)
+
+      await Promise.all(
+        targetRows.map((row) => {
+          const amount =
+            result.paymentStatus === "paid"
+              ? row.total_price
+              : result.paymentStatus === "partial"
+              ? parseFloat(result.amountPaid || "0") || 0
+              : 0
+
+          return supabase
+            .from("tbl_purchase")
+            .update({
+              payment_status: result.paymentStatus,
+              amount_paid: amount,
+              payment_method: result.paymentMethod === "none" ? null : result.paymentMethod,
+              payment_date: formatDateForDatabase(resolvedPaymentDate ?? null),
+              ready_date: formatDateForDatabase(result.readyDate ?? null),
+              pickup_deadline: formatDateForDatabase(result.pickupDeadline ?? null),
+              collected_date: formatDateForDatabase(result.collectedDate ?? null),
+              ...updateFields,
+            })
+            .eq("id", row.id)
+        })
+      )
+
+      toast.success(`Updated ${bulkPaymentTarget.length} item${bulkPaymentTarget.length > 1 ? "s" : ""}`)
+      setSelectedPendingIds(new Set())
+      setBulkPaymentTarget(null)
+      fetchRows()
+    } catch (error) {
+      console.error("Failed to bulk update status:", error)
+      toast.error("Failed to update items")
+    }
   }
 
   const handleMarkCollected = async (ids: string[], paymentMethod: string | null) => {
@@ -449,6 +527,33 @@ export function PreorderTracker() {
             </Select>
           </div>
         </div>
+        {orderTab === "pending" && visiblePendingIds.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 rounded-md border border-dashed px-3 py-2">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox checked={allPendingSelected} onCheckedChange={toggleSelectAllPending} />
+              Select all {visiblePendingIds.length} shown
+            </label>
+            {selectedPendingIds.size > 0 && (
+              <>
+                <span className="text-xs text-muted-foreground">{selectedPendingIds.size} selected</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedPendingIds(new Set())}
+                >
+                  Clear
+                </Button>
+                <Button
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => setBulkPaymentTarget(Array.from(selectedPendingIds))}
+                >
+                  Bulk update status
+                </Button>
+              </>
+            )}
+          </div>
+        )}
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : ordersGrouped.length === 0 ? (
@@ -497,6 +602,12 @@ export function PreorderTracker() {
                 <CardContent className="space-y-1">
                   {items.map((item) => (
                     <div key={item.id} className="flex items-center gap-3 py-2 border-t first:border-t-0">
+                      {orderTab === "pending" && (
+                        <Checkbox
+                          checked={selectedPendingIds.has(item.id)}
+                          onCheckedChange={() => togglePendingSelected(item.id)}
+                        />
+                      )}
                       <div className="min-w-0 flex-1">
                         <p className="text-sm truncate">
                           {item.item_no ? `${item.item_no} — ` : ""}
@@ -562,6 +673,24 @@ export function PreorderTracker() {
             .filter((item): item is BulkCollectItem => item !== null)}
           onOpenChange={(open) => !open && setBulkCollectTarget(null)}
           onConfirm={(paymentMethod) => handleMarkCollected(bulkCollectTarget.ids, paymentMethod)}
+        />
+      )}
+
+      {bulkPaymentTarget && (
+        <BulkStatusUpdateDialog
+          items={bulkPaymentTarget
+            .map((id): BulkStatusUpdateItem | null => {
+              const row = rows.find((r) => r.id === id)
+              if (!row) return null
+              return {
+                id: row.id,
+                label: row.item_no ? `${row.item_no} — ${row.collection_name}` : row.collection_name,
+                totalPrice: row.total_price,
+              }
+            })
+            .filter((item): item is BulkStatusUpdateItem => item !== null)}
+          onOpenChange={(open) => !open && setBulkPaymentTarget(null)}
+          onConfirm={handleBulkStatusUpdate}
         />
       )}
     </div>
