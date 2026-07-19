@@ -4,6 +4,7 @@ import '../../core/format.dart';
 import '../../core/ownership.dart';
 import '../../data/models/catalog_item.dart';
 import '../../data/models/purchase.dart';
+import '../purchase/add_purchase_screen.dart';
 import 'widgets/catalog_image.dart';
 
 /// Bottom sheet showing an item's images, key facts, ownership status and
@@ -85,6 +86,19 @@ class _ItemDetail extends StatelessWidget {
                   context, 'Pre-order', '${item.preOrderQty}', Colors.blue),
             ),
           ],
+        ),
+        const SizedBox(height: 16),
+
+        FilledButton.icon(
+          onPressed: () {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => AddPurchaseScreen(item: item),
+            ));
+          },
+          icon: const Icon(Icons.add_shopping_cart),
+          label: const Text('Add Purchase'),
+          style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14)),
         ),
         const SizedBox(height: 20),
 

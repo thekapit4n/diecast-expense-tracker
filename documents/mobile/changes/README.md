@@ -8,7 +8,7 @@ in `documents/changes/` so mobile and web history never mix.
 
 | Date | Summary |
 |------|---------|
-| [2026-07-19](2026-07-19.md) | Mobile app started: Flutter setup, login, dashboard, catalog, scanner |
+| [2026-07-19](2026-07-19.md) | Mobile app started: login, dashboard, catalog, scanner, purchase entry, pre-order tracker |
 
 ## File Naming Rule
 
