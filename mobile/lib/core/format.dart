@@ -27,3 +27,28 @@ const _months = [
 ];
 
 String _formatDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
+
+/// Formats a DateTime as `yyyy-MM-dd` for Postgres DATE columns, or null.
+/// Mirrors the web's formatDateForDatabase.
+String? toDbDate(DateTime? d) {
+  if (d == null) return null;
+  final mo = d.month.toString().padLeft(2, '0');
+  final day = d.day.toString().padLeft(2, '0');
+  return '${d.year}-$mo-$day';
+}
+
+/// Parses a `yyyy-MM-dd` DB date string into a local DateTime (or null).
+DateTime? parseDbDate(String? iso) {
+  if (iso == null || iso.isEmpty) return null;
+  final p = iso.split('-');
+  if (p.length != 3) return null;
+  final y = int.tryParse(p[0]), mo = int.tryParse(p[1]), d = int.tryParse(p[2]);
+  if (y == null || mo == null || d == null) return null;
+  return DateTime(y, mo, d);
+}
+
+/// Formats a `yyyy-MM-dd` string as `d MMM yyyy`, or `—` when empty/invalid.
+String formatIsoDate(String? iso) {
+  final d = parseDbDate(iso);
+  return d == null ? '—' : _formatDate(d);
+}
