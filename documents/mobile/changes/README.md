@@ -9,6 +9,7 @@ in `documents/changes/` so mobile and web history never mix.
 | Date | Summary |
 |------|---------|
 | [2026-07-19](2026-07-19.md) | Mobile app started: login, dashboard, catalog, scanner, purchase entry, pre-order tracker |
+| [2026-07-20](2026-07-20.md) | On-device (Phase 7): tracker layout fix, bulk collect, totals, Scan in menu, Add Purchase hidden |
 
 ## File Naming Rule
 

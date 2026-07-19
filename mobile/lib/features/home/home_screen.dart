@@ -5,7 +5,6 @@ import '../../config/supabase.dart';
 import '../../core/format.dart';
 import '../../core/ownership.dart';
 import '../../data/models/purchase.dart';
-import '../scan/scan_screen.dart';
 import 'dashboard_data.dart';
 
 /// Home dashboard: collection summary + recent purchases + Scan button.
@@ -108,23 +107,6 @@ class _DashboardView extends StatelessWidget {
           icon: Icons.payments_outlined,
           color: Colors.red,
           wide: true,
-        ),
-
-        const SizedBox(height: 24),
-
-        // --- Scan button (wired up in Phase 4) ---
-        FilledButton.icon(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ScanScreen()),
-            );
-          },
-          icon: const Icon(Icons.qr_code_scanner),
-          label: const Text('Scan Diecast'),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
         ),
 
         const SizedBox(height: 24),

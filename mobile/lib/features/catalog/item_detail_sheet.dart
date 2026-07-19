@@ -7,6 +7,11 @@ import '../../data/models/purchase.dart';
 import '../purchase/add_purchase_screen.dart';
 import 'widgets/catalog_image.dart';
 
+/// Whether the mobile "Add Purchase" button is shown. Off for now: new items
+/// are created on the web admin, so mobile stays view-only. Flip to true to
+/// re-enable adding purchases (to existing items) from the phone.
+const bool kEnableMobileAddPurchase = false;
+
 /// Bottom sheet showing an item's images, key facts, ownership status and
 /// purchase history. Opened by tapping a catalog card.
 void showItemDetailSheet(BuildContext context, CatalogItem item) {
@@ -87,19 +92,20 @@ class _ItemDetail extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
-
-        FilledButton.icon(
-          onPressed: () {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => AddPurchaseScreen(item: item),
-            ));
-          },
-          icon: const Icon(Icons.add_shopping_cart),
-          label: const Text('Add Purchase'),
-          style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14)),
-        ),
+        if (kEnableMobileAddPurchase) ...[
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => AddPurchaseScreen(item: item),
+              ));
+            },
+            icon: const Icon(Icons.add_shopping_cart),
+            label: const Text('Add Purchase'),
+            style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14)),
+          ),
+        ],
         const SizedBox(height: 20),
 
         Text('Purchase history', style: theme.textTheme.titleMedium),

@@ -20,6 +20,10 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
   String _search = '';
   OrderTab _tab = OrderTab.pending;
   bool _showCancelled = false;
+  final Set<String> _selected = {};
+
+  /// Bulk-collect selection is only offered on the Ready tab.
+  bool get _selectionMode => _tab == OrderTab.ready && !_showCancelled;
 
   @override
   void dispose() {
@@ -75,6 +79,9 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
               totalPrice: i.totalPrice,
               amountPaid: i.amountPaid,
             ));
+    // Total pre-order items still in the pipeline (not yet collected).
+    final totalPreorders =
+        active.where((i) => i.collectedDate == null).length;
 
     final groups = _groupsForTab(_showCancelled ? cancelled : active);
 
@@ -85,13 +92,20 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
         children: [
           Row(
             children: [
-              Expanded(child: _summary('Awaiting', '$awaiting', Colors.orange)),
-              const SizedBox(width: 8),
-              Expanded(child: _summary('Ready', '$ready', Colors.green)),
+              Expanded(
+                  child: _summary('Total pre-orders', '$totalPreorders', Colors.blue)),
               const SizedBox(width: 8),
               Expanded(
                   child: _summary('Balance due', formatMoney(balanceDue), Colors.red,
                       small: true)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _summary('Awaiting', '$awaiting', Colors.orange)),
+              const SizedBox(width: 8),
+              Expanded(child: _summary('Ready', '$ready', Colors.green)),
             ],
           ),
           const SizedBox(height: 16),
@@ -106,7 +120,10 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
             selected: {_tab},
             onSelectionChanged: _showCancelled
                 ? null
-                : (s) => setState(() => _tab = s.first),
+                : (s) => setState(() {
+                      _tab = s.first;
+                      _selected.clear();
+                    }),
           ),
           const SizedBox(height: 8),
           Row(
@@ -127,11 +144,17 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
               FilterChip(
                 label: Text('Cancelled (${_countGroups(cancelled)})'),
                 selected: _showCancelled,
-                onSelected: (v) => setState(() => _showCancelled = v),
+                onSelected: (v) => setState(() {
+                  _showCancelled = v;
+                  _selected.clear();
+                }),
               ),
             ],
           ),
           const SizedBox(height: 12),
+
+          if (_selectionMode && groups.isNotEmpty)
+            _bulkBar(groups.expand((g) => g).toList()),
 
           if (groups.isEmpty)
             Padding(
@@ -148,6 +171,185 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
           else
             ...groups.map(_orderCard),
         ],
+      ),
+    );
+  }
+
+  /// Select-all + "mark selected as collected" controls, shown on the Ready tab.
+  Widget _bulkBar(List<PoItem> shownItems) {
+    final ids = shownItems.map((i) => i.id).toList();
+    final allSelected = ids.isNotEmpty && ids.every(_selected.contains);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant, width: 1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Checkbox(
+            value: allSelected,
+            onChanged: (_) => setState(() {
+              if (allSelected) {
+                _selected.clear();
+              } else {
+                _selected.addAll(ids);
+              }
+            }),
+          ),
+          Expanded(
+            child: Text(
+              _selected.isEmpty
+                  ? 'Select all ${ids.length}'
+                  : '${_selected.length} selected',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          if (_selected.isNotEmpty)
+            FilledButton.icon(
+              onPressed: () => _bulkCollect(shownItems),
+              icon: const Icon(Icons.inventory_2_outlined, size: 18),
+              label: const Text('Collect'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _bulkCollect(List<PoItem> shownItems) async {
+    final targets = shownItems.where((i) => _selected.contains(i.id)).toList();
+    if (targets.isEmpty) return;
+
+    final method = await _showBulkCollectSheet(targets);
+    if (method == null) return; // cancelled
+
+    try {
+      final repo = ref.read(purchaseRepositoryProvider);
+      await Future.wait(
+          targets.map((t) => repo.markCollected(t, paymentMethod: method)));
+      _selected.clear();
+      ref.invalidate(poItemsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Marked ${targets.length} item(s) as collected')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
+    }
+  }
+
+  /// Itemised confirm sheet (mirrors the web BulkCollectDialog). Returns the
+  /// chosen payment method ('none' = not specified), or null if cancelled.
+  Future<String?> _showBulkCollectSheet(List<PoItem> targets) {
+    final total = targets.fold<double>(0, (s, i) => s + i.totalPrice);
+    final shops = targets.map((i) => i.shopName).whereType<String>().toSet();
+    final subtitle = shops.length == 1
+        ? '${targets.length} items at ${shops.first}'
+        : '${targets.length} items';
+    var method = 'none';
+
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheet) {
+          final theme = Theme.of(sheetCtx);
+          return DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.75,
+            maxChildSize: 0.92,
+            minChildSize: 0.4,
+            builder: (ctx, controller) => ListView(
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              children: [
+                Text('Mark as collected', style: theme.textTheme.titleLarge),
+                Text(subtitle,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.colorScheme.outline)),
+                const SizedBox(height: 12),
+                ...targets.map((t) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              t.itemNo != null
+                                  ? '${t.itemNo} — ${t.collectionName}'
+                                  : t.collectionName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(formatMoney(t.totalPrice),
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(color: theme.colorScheme.outline)),
+                        ],
+                      ),
+                    )),
+                const Divider(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Total', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(formatMoney(total),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text('How did you pay for this visit?',
+                    style: theme.textTheme.titleSmall),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: method,
+                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  items: const [
+                    DropdownMenuItem(value: 'none', child: Text('Not specified')),
+                    DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                    DropdownMenuItem(value: 'qr_payment', child: Text('QR Payment')),
+                    DropdownMenuItem(value: 'credit_card', child: Text('Credit Card')),
+                    DropdownMenuItem(value: 'fpx', child: Text('FPX')),
+                  ],
+                  onChanged: (v) => setSheet(() => method = v ?? 'none'),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Applies to all ${targets.length} items — each will be marked paid in full and collected today.',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(sheetCtx),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(sheetCtx, method),
+                        child: Text('Mark ${targets.length} as collected'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -198,12 +400,21 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value,
-              style: (small ? theme.textTheme.titleMedium : theme.textTheme.headlineSmall)
-                  ?.copyWith(color: color, fontWeight: FontWeight.bold)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(value,
+                maxLines: 1,
+                style: (small ? theme.textTheme.titleMedium : theme.textTheme.headlineSmall)
+                    ?.copyWith(color: color, fontWeight: FontWeight.bold)),
+          ),
           Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline)),
         ],
@@ -227,16 +438,27 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
               children: [
                 Expanded(
                   child: Text(header.shopName ?? 'Unknown seller',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                if (header.poReference != null)
-                  Text(header.poReference!,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.outline)),
+                if (header.poReference != null) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(header.poReference!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.colorScheme.outline)),
+                  ),
+                ],
                 if (header.poSourceLink != null)
                   IconButton(
                     icon: const Icon(Icons.open_in_new, size: 18),
                     tooltip: 'Open order link',
+                    visualDensity: VisualDensity.compact,
                     onPressed: () => _openLink(header.poSourceLink!),
                   ),
               ],
@@ -252,6 +474,19 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
               ),
             const SizedBox(height: 4),
             ...items.map((it) => _itemRow(it)),
+            const Divider(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${items.length} item${items.length > 1 ? 's' : ''}',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.outline)),
+                Text(
+                  formatMoney(items.fold<double>(0, (s, i) => s + i.totalPrice)),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -276,6 +511,17 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
+            if (_selectionMode)
+              Checkbox(
+                value: _selected.contains(it.id),
+                onChanged: (v) => setState(() {
+                  if (v == true) {
+                    _selected.add(it.id);
+                  } else {
+                    _selected.remove(it.id);
+                  }
+                }),
+              ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,6 +530,7 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
                     it.itemNo != null ? '${it.itemNo} — ${it.collectionName}' : it.collectionName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    softWrap: false,
                     style: const TextStyle(fontSize: 13),
                   ),
                   Text(
