@@ -447,32 +447,34 @@ export function PreorderTracker() {
                 </CardHeader>
                 <CardContent>
                   <div className="rounded-md border border-dashed border-amber-500/30">
-                    {items.map((item) => (
-                      <label
-                        key={item.id}
-                        className="flex items-center gap-3 px-3 py-2 border-b border-dashed border-amber-500/20 last:border-b-0 cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={selectedIds.has(item.id)}
-                          onCheckedChange={() => toggleSelected(item.id)}
-                        />
-                        <span className="flex-1 text-sm truncate">
-                          {item.item_no ? `${item.item_no} — ` : ""}
-                          {item.collection_name}
-                          {item.quantity > 1 && (
-                            <span className="text-muted-foreground"> ×{item.quantity}</span>
-                          )}
-                        </span>
-                        {item.pickup_deadline && (
-                          <span className="text-xs text-amber-500 whitespace-nowrap">
-                            {formatDeadlineLabel(item.pickup_deadline)}
+                    <div className={cn("max-h-[40vh] overflow-y-auto", tw.scrollbarCatalog)}>
+                      {items.map((item) => (
+                        <label
+                          key={item.id}
+                          className="flex items-center gap-3 px-3 py-2 border-b border-dashed border-amber-500/20 last:border-b-0 cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={selectedIds.has(item.id)}
+                            onCheckedChange={() => toggleSelected(item.id)}
+                          />
+                          <span className="flex-1 text-sm truncate">
+                            {item.item_no ? `${item.item_no} — ` : ""}
+                            {item.collection_name}
+                            {item.quantity > 1 && (
+                              <span className="text-muted-foreground"> ×{item.quantity}</span>
+                            )}
                           </span>
-                        )}
-                        <span className="text-sm text-muted-foreground whitespace-nowrap w-24 text-right">
-                          RM {item.total_price.toFixed(2)}
-                        </span>
-                      </label>
-                    ))}
+                          {item.pickup_deadline && (
+                            <span className="text-xs text-amber-500 whitespace-nowrap">
+                              {formatDeadlineLabel(item.pickup_deadline)}
+                            </span>
+                          )}
+                          <span className="text-sm text-muted-foreground whitespace-nowrap w-24 text-right">
+                            RM {item.total_price.toFixed(2)}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
                     <div className="flex items-center justify-between px-3 py-2 border-t border-amber-500/30">
                       <span className={cn("text-sm font-semibold", tw.textTitle)}>
                         Total ({items.length} item{items.length > 1 ? "s" : ""})
@@ -554,6 +556,7 @@ export function PreorderTracker() {
             )}
           </div>
         )}
+        <div className={cn("max-h-[65vh] overflow-y-auto pr-1", tw.scrollbarCatalog, "space-y-3")}>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : ordersGrouped.length === 0 ? (
@@ -616,11 +619,17 @@ export function PreorderTracker() {
                         <p className="text-xs text-muted-foreground">
                           {variantLabel(item.variant_status)}
                           {packagingLabel(item.packaging_type) && ` · ${packagingLabel(item.packaging_type)}`}
+                          {item.quantity > 1 && ` · RM ${item.price_per_unit.toFixed(2)}/unit`}
                         </p>
                       </div>
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">
-                        RM {item.total_price.toFixed(2)}
-                      </span>
+                      <div className="text-right whitespace-nowrap">
+                        <span className="text-sm text-muted-foreground">RM {item.total_price.toFixed(2)}</span>
+                        {item.quantity > 1 && (
+                          <span className="ml-1.5 inline-flex items-center rounded-full bg-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground align-middle">
+                            ×{item.quantity}
+                          </span>
+                        )}
+                      </div>
                       <StageBadge row={item} />
                       <Button
                         size="sm"
@@ -649,6 +658,7 @@ export function PreorderTracker() {
             )
           })
         )}
+        </div>
       </div>
 
       <PoStatusModal

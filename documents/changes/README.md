@@ -13,6 +13,7 @@ Use this folder to record project updates day by day in simple English.
 | [2026-06-18](2026-06-18.md) | Purchase price accepts RM 0.00 |
 | [2026-07-12](2026-07-12.md) | Pre-order Tracker, PO order DB, amount_paid dashboard, safe delete |
 | [2026-07-18](2026-07-18.md) | Chase/normal photo split & catalog tiles, Pre-order Tracker bulk status update |
+| [2026-07-19](2026-07-19.md) | Pre-order Tracker scrollable lists and quantity/price detail per row |
 
 ## File Naming Rule
 
