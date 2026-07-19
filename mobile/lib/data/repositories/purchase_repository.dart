@@ -190,13 +190,17 @@ class PurchaseRepository {
   }
 
   /// Quick action: mark collected today (implies fully paid, matches web).
-  Future<void> markCollected(PoItem item) async {
+  /// [paymentMethod] backfills the method for sellers who collect payment on
+  /// pickup; an existing method is preserved when null/'none'.
+  Future<void> markCollected(PoItem item, {String? paymentMethod}) async {
     final today = toDbDate(DateTime.now());
     await supabase.from('tbl_purchase').update({
       'collected_date': today,
       'payment_status': 'paid',
       'amount_paid': item.totalPrice,
       'payment_date': item.paymentDate ?? today,
+      if (paymentMethod != null && paymentMethod != 'none')
+        'payment_method': paymentMethod,
       ..._updateAudit(),
     }).eq('id', item.id);
   }

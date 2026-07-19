@@ -207,6 +207,8 @@ export function PreorderTracker() {
   const balanceDue = rows
     .filter((r) => !r.collected_date)
     .reduce((sum, r) => sum + Math.max(r.total_price - (r.amount_paid || 0), 0), 0)
+  // Total pre-order line items still in the pipeline (not yet collected).
+  const totalPreorders = awaitingProduction.length + readyForPickup.length
 
   const readyGroupedByShop = useMemo(() => {
     const map = new Map<string, PoTrackerRow[]>()
@@ -397,7 +399,15 @@ export function PreorderTracker() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className={cn("text-sm font-medium", tw.textTitle)}>Total pre-orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={cn("text-2xl font-bold", tw.textTitle)}>{isLoading ? "…" : totalPreorders}</div>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className={cn("text-sm font-medium", tw.textTitle)}>Awaiting production</CardTitle>
