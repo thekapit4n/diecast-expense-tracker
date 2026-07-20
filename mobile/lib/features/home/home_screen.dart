@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../config/supabase.dart';
+import '../../core/error_view.dart';
 import '../../core/format.dart';
 import '../../core/ownership.dart';
 import '../../data/models/purchase.dart';
@@ -30,24 +31,9 @@ class HomeScreen extends ConsumerWidget {
         onRefresh: () async => ref.refresh(dashboardProvider.future),
         child: async.when(
           loading: () => const _CenteredScroll(child: CircularProgressIndicator()),
-          error: (e, _) => _CenteredScroll(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline, size: 40),
-                  const SizedBox(height: 12),
-                  Text('Could not load dashboard.\n$e',
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: 12),
-                  FilledButton.tonal(
-                    onPressed: () => ref.invalidate(dashboardProvider),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            ),
+          error: (e, _) => AppErrorView(
+            error: e,
+            onRetry: () => ref.invalidate(dashboardProvider),
           ),
           data: (d) => _DashboardView(data: d),
         ),

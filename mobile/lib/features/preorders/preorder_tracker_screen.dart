@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/error_view.dart';
 import '../../core/format.dart';
 import '../../core/po_status.dart';
 import '../../data/models/po_item.dart';
@@ -39,23 +40,9 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
       appBar: AppBar(title: const Text('Pre-order Tracker')),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, size: 40),
-                const SizedBox(height: 12),
-                Text('Could not load pre-orders.\n$e', textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                FilledButton.tonal(
-                  onPressed: () => ref.invalidate(poItemsProvider),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+        error: (e, _) => AppErrorView(
+          error: e,
+          onRetry: () => ref.invalidate(poItemsProvider),
         ),
         data: (items) => _build(items),
       ),

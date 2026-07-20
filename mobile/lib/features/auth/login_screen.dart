@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/supabase.dart';
+import '../../core/error_view.dart'
+    show ensureOnline, isNetworkError, requestTimeout;
 
 /// Email + password sign-in against the shared Supabase project.
 /// go_router redirects to Home automatically once a session exists.
@@ -35,15 +37,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
     try {
-      await supabase.auth.signInWithPassword(
-        email: _email.text.trim(),
-        password: _password.text,
-      );
+      await ensureOnline();
+      await supabase.auth
+          .signInWithPassword(
+            email: _email.text.trim(),
+            password: _password.text,
+          )
+          .timeout(requestTimeout);
       // No manual navigation: the router redirect reacts to the new session.
     } on AuthException catch (e) {
       setState(() => _error = e.message);
-    } catch (_) {
-      setState(() => _error = 'Something went wrong. Please try again.');
+    } catch (e) {
+      setState(() => _error = isNetworkError(e)
+          ? 'No internet connection. Check your Wi-Fi or mobile data, then try again.'
+          : 'Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }

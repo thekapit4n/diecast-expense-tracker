@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../config/supabase.dart';
+import '../../core/error_view.dart' show ensureOnline, requestTimeout;
 import '../../core/ownership.dart';
 import '../../data/models/purchase.dart';
 
@@ -34,7 +35,11 @@ const _purchaseSelect = '''
 ''';
 
 final dashboardProvider = FutureProvider.autoDispose<DashboardData>((ref) async {
-  final rows = await supabase.from('tbl_purchase').select(_purchaseSelect);
+  await ensureOnline();
+  final rows = await supabase
+      .from('tbl_purchase')
+      .select(_purchaseSelect)
+      .timeout(requestTimeout);
 
   final purchases =
       (rows as List).map((r) => Purchase.fromRow(r as Map<String, dynamic>)).toList();
