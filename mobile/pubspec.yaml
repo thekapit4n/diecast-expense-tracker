@@ -42,6 +42,8 @@ dependencies:
   google_mlkit_text_recognition: ^0.16.0
   image_picker: ^1.2.3
   url_launcher: ^6.3.2
+  flutter_native_splash: ^2.4.8
+  connectivity_plus: ^7.3.0
 
 dev_dependencies:
   flutter_test:
@@ -53,6 +55,26 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+flutter_launcher_icons:
+  ios: true
+  android: false
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true
+  background_color_ios: "#0B1622"
+
+# Native launch screen. Regenerate after changing assets/splash/splash.png with:
+#   dart run flutter_native_splash:create
+# The colour matches the artwork's own background so the centred image blends
+# seamlessly into the screen.
+flutter_native_splash:
+  color: "#000816"
+  image: "assets/splash/splash.png"
+  ios: true
+  android: false
+  # fullscreen must stay false: on iOS it sets UIStatusBarHidden app-wide,
+  # which would hide the clock/battery inside the app too.
+  fullscreen: false
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

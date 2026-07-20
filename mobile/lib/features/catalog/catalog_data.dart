@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../config/supabase.dart';
+import '../../core/error_view.dart' show ensureOnline, requestTimeout;
 import '../../core/ownership.dart';
 import '../../data/catalog_image_paths.dart';
 import '../../data/models/catalog_item.dart';
@@ -19,6 +20,7 @@ class CatalogData {
 /// group purchases + details per collection, split chase/normal into tiles,
 /// and aggregate owned / pre-order quantities with the shared ownership rules.
 final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
+  await ensureOnline();
   final collectionsF = supabase
       .from('tbl_collection')
       .select(
@@ -40,7 +42,8 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
   final detailsF =
       supabase.from('tbl_collection_detail').select('collection_id, is_case, is_chase');
 
-  final results = await Future.wait([collectionsF, brandsF, purchasesF, detailsF]);
+  final results = await Future.wait([collectionsF, brandsF, purchasesF, detailsF])
+      .timeout(requestTimeout);
   final collectionsRaw = results[0] as List;
   final brandsRaw = results[1] as List;
   final purchasesRaw = results[2] as List;

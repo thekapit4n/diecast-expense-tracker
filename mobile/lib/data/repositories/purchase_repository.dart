@@ -1,4 +1,5 @@
 import '../../config/supabase.dart';
+import '../../core/error_view.dart' show ensureOnline, requestTimeout;
 import '../../core/format.dart';
 import '../../core/po_status.dart';
 import '../models/po_item.dart';
@@ -56,11 +57,13 @@ class PurchaseRepository {
   ''';
 
   Future<List<PoItem>> fetchPoItems() async {
+    await ensureOnline();
     final rows = await supabase
         .from('tbl_purchase')
         .select(_poSelect)
         .not('po_order_id', 'is', null)
-        .order('created_at', ascending: false);
+        .order('created_at', ascending: false)
+        .timeout(requestTimeout);
     return (rows as List)
         .map((r) => PoItem.fromRow(r as Map<String, dynamic>))
         .toList();

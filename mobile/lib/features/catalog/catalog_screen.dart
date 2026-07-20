@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/error_view.dart';
 import '../../data/models/catalog_item.dart';
 import 'catalog_data.dart';
 import 'item_detail_sheet.dart';
@@ -60,23 +61,9 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       appBar: AppBar(title: const Text('Catalog')),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, size: 40),
-                const SizedBox(height: 12),
-                Text('Could not load catalog.\n$e', textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                FilledButton.tonal(
-                  onPressed: () => ref.invalidate(catalogProvider),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+        error: (e, _) => AppErrorView(
+          error: e,
+          onRetry: () => ref.invalidate(catalogProvider),
         ),
         data: (data) {
           // Default to Mini GT tab the first time, like the web.
