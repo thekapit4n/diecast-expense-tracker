@@ -563,6 +563,7 @@ export function EditPurchaseModal({
     { id: "carousell", label: "Carousell" },
     { id: "tiktok", label: "Tiktok" },
     { id: "facebook", label: "Facebook Marketplace" },
+    { id: "facebook_bid", label: "Facebook Bid" },
     { id: "instagram", label: "Instagram" },
     { id: "tokopedia", label: "Tokopedia" },
     { id: "amazon", label: "Amazon" },

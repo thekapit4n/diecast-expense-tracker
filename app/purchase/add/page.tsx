@@ -899,6 +899,7 @@ export default function AddPurchasePage() {
                                     <SelectItem value="carousell">Carousell</SelectItem>
                                     <SelectItem value="tiktok">Tiktok</SelectItem>
                                     <SelectItem value="facebook">Facebook Marketplace</SelectItem>
+                                    <SelectItem value="facebook_bid">Facebook Bid</SelectItem>
                                     <SelectItem value="instagram">Instagram</SelectItem>
                                     <SelectItem value="tokopedia">Tokopedia</SelectItem>
                                     <SelectItem value="amazon">Amazon</SelectItem>
