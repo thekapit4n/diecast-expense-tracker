@@ -11,11 +11,14 @@ import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  // resolvedTheme rather than theme: passing "system" would make Sonner run its
+  // own matchMedia check, which is a second source of truth that can disagree
+  // with next-themes. The "dark" fallback matches the app's default theme.
+  const { resolvedTheme } = useTheme()
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={(resolvedTheme ?? "dark") as ToasterProps["theme"]}
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,

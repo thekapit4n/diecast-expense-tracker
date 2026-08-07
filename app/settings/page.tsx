@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
+import { ThemeSelect } from "@/components/theme/theme-select"
 
 export default function SettingsPage() {
   return (
@@ -24,6 +25,21 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Appearance</CardTitle>
+            <CardDescription>
+              Choose how the portal looks. Changes apply immediately.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="theme">Theme</Label>
+              <ThemeSelect />
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>General Settings</CardTitle>

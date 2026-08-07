@@ -43,3 +43,6 @@ next-env.d.ts
 
 # supabase
 .supabase
+
+# local git worktrees created by Claude Code sessions
+.claude/worktrees/

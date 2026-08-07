@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/format.dart';
-import '../../core/ownership.dart';
 import '../../data/models/catalog_item.dart';
 import '../../data/models/purchase.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/status_style.dart';
 import '../purchase/add_purchase_screen.dart';
 import 'widgets/catalog_image.dart';
 
@@ -38,6 +39,7 @@ class _ItemDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final status = AppStatusColors.of(context);
 
     return ListView(
       controller: controller,
@@ -71,10 +73,12 @@ class _ItemDetail extends StatelessWidget {
           runSpacing: 4,
           children: [
             _tag(context, item.brandName, theme.colorScheme.primary),
-            if (item.itemNo != null) _tag(context, item.itemNo!, Colors.blueGrey),
-            if (item.scale != null) _tag(context, item.scale!, Colors.blueGrey),
-            if (item.isChase) _tag(context, 'CHASE', Colors.red),
-            if (item.isCase) _tag(context, 'CASE', Colors.amber.shade800),
+            if (item.itemNo != null)
+              _tag(context, item.itemNo!, theme.colorScheme.outline),
+            if (item.scale != null)
+              _tag(context, item.scale!, theme.colorScheme.outline),
+            if (item.isChase) _tag(context, 'CHASE', status.chase),
+            if (item.isCase) _tag(context, 'CASE', status.caseBadge),
           ],
         ),
         const SizedBox(height: 16),
@@ -83,12 +87,12 @@ class _ItemDetail extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: _statBox(context, 'Owned', '${item.totalQty}', Colors.green),
+              child: _statBox(context, 'Owned', '${item.totalQty}', status.owned),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _statBox(
-                  context, 'Pre-order', '${item.preOrderQty}', Colors.blue),
+                  context, 'Pre-order', '${item.preOrderQty}', status.preOrder),
             ),
           ],
         ),
@@ -162,7 +166,7 @@ class _PurchaseRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final (label, color) = _status(purchase, theme);
+    final (label, color) = purchaseStatusStyle(context, purchase);
     final where = [
       if (purchase.paymentStatus != null) purchase.paymentStatus,
     ].whereType<String>().join(' · ');
@@ -214,12 +218,4 @@ class _PurchaseRow extends StatelessWidget {
     );
   }
 
-  (String, Color) _status(Purchase p, ThemeData theme) {
-    if (isOwned(p)) return ('Owned', Colors.green);
-    if (isReadyToCollect(p)) return ('Ready', Colors.teal);
-    if (isPartiallyPaid(p)) return ('Partial', Colors.orange);
-    if (isPreOrder(p)) return ('Pre-order', Colors.blue);
-    if (isOutstanding(p)) return ('Unpaid', Colors.red);
-    return ('—', theme.colorScheme.outline);
-  }
 }

@@ -1,3 +1,13 @@
+/// Columns every [Purchase]-backed screen needs: the dashboard metrics, the
+/// spending insights aggregation, and the joined collection name/brand for the
+/// "recent purchases" list. Shared so the model and the queries cannot drift.
+const purchaseSelect = '''
+  collection_id, quantity, price_per_unit, total_price, amount_paid,
+  payment_status, payment_date, po_order_id, ready_date, collected_date,
+  is_chase, shop_name, created_at,
+  tbl_collection ( name, item_no, tbl_master_brand ( name ) )
+''';
+
 /// One row from tbl_purchase, with the related collection name/brand joined in.
 /// Field names mirror the web app's PurchaseRecord where they overlap.
 class Purchase {
@@ -6,6 +16,7 @@ class Purchase {
     required this.collectionName,
     required this.itemNo,
     required this.brandName,
+    required this.shopName,
     required this.quantity,
     required this.pricePerUnit,
     required this.totalPrice,
@@ -23,6 +34,7 @@ class Purchase {
   final String collectionName;
   final String? itemNo;
   final String? brandName;
+  final String? shopName;
   final int quantity;
   final double? pricePerUnit;
   final double? totalPrice;
@@ -49,6 +61,7 @@ class Purchase {
       collectionName: (collection?['name'] as String?) ?? 'Unknown item',
       itemNo: collection?['item_no'] as String?,
       brandName: brand?['name'] as String?,
+      shopName: row['shop_name'] as String?,
       quantity: (row['quantity'] as num?)?.toInt() ?? 1,
       pricePerUnit: toDouble(row['price_per_unit']),
       totalPrice: toDouble(row['total_price']),

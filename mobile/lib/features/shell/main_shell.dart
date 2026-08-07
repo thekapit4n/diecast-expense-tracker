@@ -2,14 +2,67 @@ import 'package:flutter/material.dart';
 
 import '../catalog/catalog_screen.dart';
 import '../home/home_screen.dart';
+import '../insights/insights_screen.dart';
 import '../preorders/preorder_tracker_screen.dart';
 import '../scan/scan_screen.dart';
 
+/// One entry in the bottom nav bar.
+///
+/// Most destinations are pages held alive in the [IndexedStack]. Scan is the
+/// exception: it pushes the camera as a route so it isn't kept running in the
+/// background, so it carries no page.
+class _Destination {
+  const _Destination({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    this.page,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+
+  /// Null for action destinations (Scan).
+  final Widget? page;
+
+  bool get isAction => page == null;
+}
+
+const _destinations = [
+  _Destination(
+    icon: Icons.dashboard_outlined,
+    selectedIcon: Icons.dashboard,
+    label: 'Home',
+    page: HomeScreen(),
+  ),
+  _Destination(
+    icon: Icons.grid_view_outlined,
+    selectedIcon: Icons.grid_view,
+    label: 'Catalog',
+    page: CatalogScreen(),
+  ),
+  _Destination(
+    icon: Icons.qr_code_scanner,
+    selectedIcon: Icons.qr_code_scanner,
+    label: 'Scan',
+  ),
+  _Destination(
+    icon: Icons.schedule_outlined,
+    selectedIcon: Icons.schedule,
+    label: 'Pre-orders',
+    page: PreorderTrackerScreen(),
+  ),
+  _Destination(
+    icon: Icons.insights_outlined,
+    selectedIcon: Icons.insights,
+    label: 'Insights',
+    page: InsightsScreen(),
+  ),
+];
+
 /// Root scaffold with a bottom nav bar. Uses IndexedStack so each tab keeps
 /// its scroll position and state when switching.
-///
-/// The Scan destination is an action (pushes the scanner) rather than a
-/// persistent page, so the camera isn't kept alive in the background.
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -18,59 +71,46 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  /// Index into [_pages] (0 Home, 1 Catalog, 2 Pre-orders).
-  int _page = 0;
+  /// Index into [_destinations] of the currently shown page. Never points at
+  /// an action destination.
+  int _selected = 0;
 
-  static const _pages = [
-    HomeScreen(),
-    CatalogScreen(),
-    PreorderTrackerScreen(),
+  /// The page destinations, in nav-bar order, so the IndexedStack child index
+  /// can be derived from the nav index instead of hand-maintained arithmetic.
+  static final _pageIndices = [
+    for (var i = 0; i < _destinations.length; i++)
+      if (!_destinations[i].isAction) i,
   ];
 
-  // Nav bar has 4 destinations; index 2 (Scan) is an action, not a page.
-  static const _scanNavIndex = 2;
-
-  /// Maps the current page to its nav-bar index (Scan sits at 2, so
-  /// Pre-orders is nav index 3).
-  int get _selectedNav => _page < 2 ? _page : 3;
-
   void _onNav(int i) {
-    if (i == _scanNavIndex) {
+    if (_destinations[i].isAction) {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const ScanScreen()),
       );
       return; // keep the current tab selected
     }
-    setState(() => _page = i == 3 ? 2 : i);
+    setState(() => _selected = i);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _page, children: _pages),
+      body: IndexedStack(
+        index: _pageIndices.indexOf(_selected),
+        children: [
+          for (final i in _pageIndices) _destinations[i].page!,
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedNav,
+        selectedIndex: _selected,
         onDestinationSelected: _onNav,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view),
-            label: 'Catalog',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.qr_code_scanner),
-            label: 'Scan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.schedule_outlined),
-            selectedIcon: Icon(Icons.schedule),
-            label: 'Pre-orders',
-          ),
+        destinations: [
+          for (final d in _destinations)
+            NavigationDestination(
+              icon: Icon(d.icon),
+              selectedIcon: Icon(d.selectedIcon),
+              label: d.label,
+            ),
         ],
       ),
     );

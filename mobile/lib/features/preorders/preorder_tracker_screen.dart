@@ -6,6 +6,8 @@ import '../../core/error_view.dart';
 import '../../core/format.dart';
 import '../../core/po_status.dart';
 import '../../data/models/po_item.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/status_style.dart';
 import 'po_status_sheet.dart';
 import 'preorder_providers.dart';
 
@@ -50,6 +52,7 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
   }
 
   Widget _build(List<PoItem> allItems) {
+    final status = AppStatusColors.of(context);
     final active = allItems.where((i) => i.preOrderStatus != 'cancelled').toList();
     final cancelled = allItems.where((i) => i.preOrderStatus == 'cancelled').toList();
 
@@ -80,19 +83,20 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
           Row(
             children: [
               Expanded(
-                  child: _summary('Total pre-orders', '$totalPreorders', Colors.blue)),
+                  child: _summary(
+                      'Total pre-orders', '$totalPreorders', status.preOrder)),
               const SizedBox(width: 8),
               Expanded(
-                  child: _summary('Balance due', formatMoney(balanceDue), Colors.red,
+                  child: _summary('Balance due', formatMoney(balanceDue), status.unpaid,
                       small: true)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(child: _summary('Awaiting', '$awaiting', Colors.orange)),
+              Expanded(child: _summary('Awaiting', '$awaiting', status.partial)),
               const SizedBox(width: 8),
-              Expanded(child: _summary('Ready', '$ready', Colors.green)),
+              Expanded(child: _summary('Ready', '$ready', status.owned)),
             ],
           ),
           const SizedBox(height: 16),
@@ -487,7 +491,7 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
       readyDate: it.readyDate,
       collectedDate: it.collectedDate,
     );
-    final (label, color) = _stageStyle(stage, theme);
+    final (label, color) = poStageStyle(context, stage);
 
     return InkWell(
       onTap: () async {
@@ -548,14 +552,6 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
       ),
     );
   }
-
-  (String, Color) _stageStyle(PoStage s, ThemeData theme) => switch (s) {
-        PoStage.collected => ('Collected', Colors.green),
-        PoStage.ready => ('Ready', Colors.teal),
-        PoStage.paid => ('Paid', Colors.blue),
-        PoStage.partial => ('Partial', Colors.orange),
-        PoStage.preorder => ('Pre-order', theme.colorScheme.outline),
-      };
 
   Future<void> _openLink(String url) async {
     final uri = Uri.tryParse(url);

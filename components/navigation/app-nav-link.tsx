@@ -27,7 +27,7 @@ export function AppNavLink({ item, pathname, onNavigate, collapsed }: AppNavLink
         collapsed && "justify-center px-2",
         isActive
           ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
-          : cn(tw.navItemText, "hover:bg-[rgba(255,255,255,0.03)] hover:text-[#bfe9ff]")
+          : cn(tw.navItemText, "hover:bg-[var(--overlay-hover)] hover:text-title-highlight")
       )}
     >
       <Icon
@@ -35,8 +35,8 @@ export function AppNavLink({ item, pathname, onNavigate, collapsed }: AppNavLink
           "h-4 w-4 shrink-0 transition-colors",
           collapsed ? "h-5 w-5" : "",
           isActive
-            ? "text-[#5EEAD4] drop-shadow-[0_0_8px_rgba(45,212,191,0.25)]"
-            : cn(tw.navItemText, "group-hover:text-[#bfe9ff]")
+            ? "text-[var(--nav-active-icon)] drop-shadow-[0_0_8px_var(--nav-icon-glow)]"
+            : cn(tw.navItemText, "group-hover:text-title-highlight")
         )}
       />
       {!collapsed && item.label}

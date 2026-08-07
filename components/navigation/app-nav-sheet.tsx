@@ -20,16 +20,16 @@ export function AppNavSheet({ open, onOpenChange }: AppNavSheetProps) {
       <SheetContent
         side="left"
         showCloseButton={false}
-        className={cn("flex w-72 flex-col border-border bg-[#0e1c28] p-0", tw.textTitle)}
+        className={cn("flex w-72 flex-col border-border bg-surface-elevated p-0", tw.textTitle)}
       >
         <SheetClose
-          className="group absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-md border transition-colors hover:border-[rgba(255,255,255,0.12)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5EEAD4]/40"
+          className="group absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-md border transition-colors hover:border-[var(--overlay-border-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nav-active-icon)]/40"
           style={{
             backgroundColor: colors.nav.closeBg,
             borderColor: colors.border.navClose,
           }}
         >
-          <X className="h-4 w-4 text-[#94A3B8] transition-colors group-hover:text-[#B6FFF2]" />
+          <X className="h-4 w-4 text-[var(--text-slate-light)] transition-colors group-hover:text-[var(--nav-hover-text)]" />
           <span className="sr-only">Close</span>
         </SheetClose>
 

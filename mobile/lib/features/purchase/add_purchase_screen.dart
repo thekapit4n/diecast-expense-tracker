@@ -308,10 +308,10 @@ class _AddPurchaseScreenState extends ConsumerState<AddPurchaseScreen> {
             ),
           ),
           if (_saving)
-            const Positioned.fill(
+            Positioned.fill(
               child: ColoredBox(
-                color: Color(0x66000000),
-                child: Center(child: CircularProgressIndicator()),
+                color: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.4),
+                child: const Center(child: CircularProgressIndicator()),
               ),
             ),
         ],
