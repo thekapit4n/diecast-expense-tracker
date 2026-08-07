@@ -32,10 +32,10 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
           ? tw.ownedBorder
           : item.preOrderQty > 0
           ? tw.preOrderBorder
-          : "border-border hover:border-[#2a4555]"
+          : "border-border hover:border-[var(--border-strong)]"
       )}
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-[#0e1c28]">
+      <div className="relative aspect-square w-full overflow-hidden bg-surface-elevated">
         {firstImage ? (
           <Image
             src={firstImage}
@@ -52,7 +52,7 @@ export default function DiecastCard({ item, onClick }: DiecastCardProps) {
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <svg
-              className="h-10 w-10 text-[#2a4555]"
+              className="h-10 w-10 text-[var(--border-strong)]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

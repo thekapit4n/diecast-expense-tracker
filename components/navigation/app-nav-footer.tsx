@@ -2,6 +2,7 @@
 
 import { LogOut, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth/auth-context"
 
@@ -20,6 +21,8 @@ export function AppNavFooter({ collapsed, onAfterLogout }: AppNavFooterProps) {
 
   return (
     <div className="border-t border-sidebar-border p-3">
+      <ThemeToggle collapsed={collapsed} />
+
       <Button
         variant="ghost"
         onClick={handleSignOut}

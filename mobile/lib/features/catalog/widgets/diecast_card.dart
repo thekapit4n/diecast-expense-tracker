@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/catalog_item.dart';
+import '../../../theme/app_theme.dart';
 import 'catalog_image.dart';
 
 /// A single catalog tile: square image with owned/pre-order/chase/case/scale
@@ -14,10 +15,11 @@ class DiecastCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final status = AppStatusColors.of(context);
     final borderColor = item.isOwnedTile
-        ? Colors.green
+        ? status.owned
         : item.isPreOrderTile
-            ? Colors.blue
+            ? status.preOrder
             : theme.colorScheme.outlineVariant;
 
     return InkWell(
@@ -40,9 +42,9 @@ class DiecastCard extends StatelessWidget {
                 children: [
                   CatalogImage(sources: item.imageSources),
                   if (item.isOwnedTile)
-                    _badge(context, 'OWNED', Colors.green, top: true)
+                    _badge(context, 'OWNED', status.owned, top: true)
                   else if (item.isPreOrderTile)
-                    _badge(context, 'PRE-ORDER', Colors.blue, top: true),
+                    _badge(context, 'PRE-ORDER', status.preOrder, top: true),
                   if (item.scale != null)
                     Positioned(
                       right: 6,

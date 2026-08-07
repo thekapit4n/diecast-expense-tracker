@@ -28,6 +28,9 @@ const _months = [
 
 String _formatDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
 
+/// Short month label like `Aug` — for chart axes where the year is implied.
+String formatMonthShort(int month) => _months[month - 1];
+
 /// Formats a DateTime as `yyyy-MM-dd` for Postgres DATE columns, or null.
 /// Mirrors the web's formatDateForDatabase.
 String? toDbDate(DateTime? d) {

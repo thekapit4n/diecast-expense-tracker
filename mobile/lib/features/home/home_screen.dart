@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../config/supabase.dart';
 import '../../core/error_view.dart';
 import '../../core/format.dart';
-import '../../core/ownership.dart';
 import '../../data/models/purchase.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/status_style.dart';
+import '../settings/settings_screen.dart';
 import 'dashboard_data.dart';
 
 /// Home dashboard: collection summary + recent purchases + Scan button.
@@ -21,9 +22,11 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('Diecast Collector'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-            onPressed: () => supabase.auth.signOut(),
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
         ],
       ),
@@ -48,6 +51,8 @@ class _DashboardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final status = AppStatusColors.of(context);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
@@ -64,25 +69,25 @@ class _DashboardView extends StatelessWidget {
               label: 'Models owned',
               value: '${data.modelsOwned}',
               icon: Icons.inventory_2_outlined,
-              color: Colors.blue,
+              color: status.preOrder,
             ),
             _StatCard(
               label: 'Units owned',
               value: '${data.unitsOwned}',
               icon: Icons.widgets_outlined,
-              color: Colors.indigo,
+              color: status.info,
             ),
             _StatCard(
               label: 'Active pre-orders',
               value: '${data.activePreOrderUnits}',
               icon: Icons.schedule,
-              color: Colors.orange,
+              color: status.partial,
             ),
             _StatCard(
               label: 'Ready to collect',
               value: '${data.readyToCollectUnits}',
               icon: Icons.local_shipping_outlined,
-              color: Colors.green,
+              color: status.owned,
             ),
           ],
         ),
@@ -91,7 +96,7 @@ class _DashboardView extends StatelessWidget {
           label: 'Unpaid / partially paid orders',
           value: '${data.outstandingOrders}',
           icon: Icons.payments_outlined,
-          color: Colors.red,
+          color: status.unpaid,
           wide: true,
         ),
 
@@ -174,7 +179,7 @@ class _PurchaseTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final (statusLabel, statusColor) = _status(purchase, theme);
+    final (statusLabel, statusColor) = purchaseStatusStyle(context, purchase);
 
     return Card(
       elevation: 0,
@@ -211,15 +216,6 @@ class _PurchaseTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  (String, Color) _status(Purchase p, ThemeData theme) {
-    if (isOwned(p)) return ('Owned', Colors.green);
-    if (isReadyToCollect(p)) return ('Ready', Colors.teal);
-    if (isPartiallyPaid(p)) return ('Partial', Colors.orange);
-    if (isPreOrder(p)) return ('Pre-order', Colors.blue);
-    if (isOutstanding(p)) return ('Unpaid', Colors.red);
-    return ('—', theme.colorScheme.outline);
   }
 }
 

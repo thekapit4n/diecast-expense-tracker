@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format.dart';
 import '../../data/models/po_item.dart';
 import '../../data/repositories/purchase_repository.dart';
+import '../notifications/reminder_sync.dart';
 import 'preorder_providers.dart';
 
 /// Bottom sheet to update one PO item's pickup/payment status. Offers quick
@@ -98,6 +101,8 @@ class _PoStatusFormState extends ConsumerState<_PoStatusForm> {
             pickupDeadline: _pickupDeadline,
             collectedDate: _collectedDate,
           );
+      // Dates changed, so the scheduled reminders for this line are stale.
+      unawaited(ref.read(reminderSyncProvider).refresh());
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
@@ -112,6 +117,7 @@ class _PoStatusFormState extends ConsumerState<_PoStatusForm> {
     setState(() => _saving = true);
     try {
       await op();
+      unawaited(ref.read(reminderSyncProvider).refresh());
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
@@ -229,10 +235,10 @@ class _PoStatusFormState extends ConsumerState<_PoStatusForm> {
           ],
         ),
         if (_saving)
-          const Positioned.fill(
+          Positioned.fill(
             child: ColoredBox(
-              color: Color(0x66000000),
-              child: Center(child: CircularProgressIndicator()),
+              color: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.4),
+              child: const Center(child: CircularProgressIndicator()),
             ),
           ),
       ],
@@ -241,9 +247,10 @@ class _PoStatusFormState extends ConsumerState<_PoStatusForm> {
 
   Widget _quick(String label, IconData icon, VoidCallback onTap,
       {bool danger = false}) {
+    final danger0 = danger ? Theme.of(context).colorScheme.error : null;
     return ActionChip(
-      avatar: Icon(icon, size: 18, color: danger ? Colors.red : null),
-      label: Text(label, style: TextStyle(color: danger ? Colors.red : null)),
+      avatar: Icon(icon, size: 18, color: danger0),
+      label: Text(label, style: TextStyle(color: danger0)),
       onPressed: _saving ? null : onTap,
     );
   }
@@ -260,7 +267,9 @@ class _PoStatusFormState extends ConsumerState<_PoStatusForm> {
               child: const Text('Keep')),
           FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError),
               child: const Text('Cancel order')),
         ],
       ),

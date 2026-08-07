@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'features/notifications/reminder_sync.dart';
+import 'features/settings/settings_store.dart';
+import 'features/settings/theme_controller.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
@@ -22,8 +26,16 @@ Future<void> main() async {
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
+  // Resolved before the first frame so the saved theme applies immediately,
+  // rather than the app rendering in the default and then snapping over.
+  final prefs = await SharedPreferences.getInstance();
 
-  runApp(const ProviderScope(child: DiecastApp()));
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: const DiecastApp(),
+    ),
+  );
 
   // Keep the splash up for the remainder of the minimum duration, so it reads
   // as branding rather than a flicker.
@@ -39,12 +51,15 @@ class DiecastApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    return MaterialApp.router(
-      title: 'Diecast Collector',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      routerConfig: router,
+    return ReminderSyncScope(
+      child: MaterialApp.router(
+        title: 'Diecast Collector',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: ref.watch(themeModeProvider),
+        routerConfig: router,
+      ),
     );
   }
 }

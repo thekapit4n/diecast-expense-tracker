@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/catalog_item.dart';
+import '../../theme/app_theme.dart';
 import '../catalog/item_detail_sheet.dart';
 import '../catalog/widgets/diecast_card.dart';
 
@@ -133,18 +134,20 @@ class _DuplicateWarning extends StatelessWidget {
         'You also have ${item.preOrderQty} unit(s) on pre-order.',
     ];
 
+    final warning = AppStatusColors.of(context).warning;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.amber.withValues(alpha: 0.15),
+        color: warning.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.shade700),
+        border: Border.all(color: warning),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.amber.shade800),
+          Icon(Icons.warning_amber_rounded, color: warning),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

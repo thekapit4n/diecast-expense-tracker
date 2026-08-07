@@ -10,7 +10,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-owned: var(--owned);
-  --color-title-highlight: #bfe9ff;
+  --color-title-highlight: var(--title-highlight);
   --color-nav-active: var(--nav-active);
   --color-nav-active-foreground: var(--nav-active-foreground);
   --color-surface-elevated: var(--surface-elevated);
@@ -51,7 +51,18 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/*
+  Theming model: `:root` IS the dark theme — it always has been, and it stays
+  that way so dark mode renders byte-for-byte as before. Light is additive: the
+  `.light` class below overrides the same tokens, and next-themes applies it
+  only when the user opts in (see components/theme/theme-provider.tsx).
+
+  Consequence worth knowing: the `dark:` variant on line 6 stays inert, because
+  no `.dark` class is ever applied. Components must not rely on it — style with
+  the semantic tokens instead, and they follow both themes automatically.
+*/
 :root {
+  color-scheme: dark;
   --radius: 0.625rem;
   --background: #0b1822;
   --foreground: #f4f4f5;
@@ -90,40 +101,136 @@
   --nav-active: #99f6e4;
   --nav-active-foreground: #99f6e4;
   --surface-elevated: #0e1c28;
+
+  /* Values that used to be hardcoded in the AG Grid block and in
+     lib/theme/diecast-theme.ts. Same colours as before — now tokens, so the
+     light theme can override them. */
+  --primary-hover: #4e7a93;
+  --border-strong: #2a4555;
+  --overlay-hover: rgba(255, 255, 255, 0.03);
+  --overlay-border: rgba(255, 255, 255, 0.08);
+  --overlay-border-hover: rgba(255, 255, 255, 0.12);
+  --shadow-popup: 0 4px 24px rgba(0, 0, 0, 0.45);
+  /* Quartz ships icons drawn for a light background; on the navy UI they have
+     to be inverted. In light mode the correct value is simply `none`. */
+  --icon-filter: invert(1) brightness(1.15);
+  --icon-filter-strong: invert(1) brightness(1.2);
+  --nav-active-icon: #5eead4;
+  --nav-hover-text: #b6fff2;
+  --nav-badge-bg: rgba(45, 212, 191, 0.08);
+  --nav-badge-border: rgba(45, 212, 191, 0.18);
+  --nav-icon-glow: rgba(45, 212, 191, 0.25);
+  --nav-header-border: rgba(125, 211, 252, 0.06);
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-faint: #52525b;
+  --text-section: #4b6b88;
+  --text-slate: #64748b;
+  --text-slate-light: #94a3b8;
+  --text-slate-bright: #e2e8f0;
+  --text-slate-pale: #f1f5f9;
+  --image-gradient-from: #0d2233;
+  --image-gradient-to: #0a1820;
+  --accent-glow: rgba(60, 100, 123, 0.55);
+  --accent-faint: rgba(60, 100, 123, 0.15);
+  --accent-separator: rgba(60, 100, 123, 0.3);
+  --accent-handle: rgba(60, 100, 123, 0.5);
+  --owned-faint: rgba(102, 154, 98, 0.2);
+  --owned-border: rgba(102, 154, 98, 0.4);
+  --owned-border-hover: rgba(102, 154, 98, 0.8);
+  --owned-on-badge: #0b1822;
+  --success-faint: rgba(102, 154, 98, 0.15);
+  --chase: #ff3b30;
+  --chase-faint: rgba(255, 59, 48, 0.15);
+  --warning: #f59e0b;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+/*
+  Light theme. Cool near-white surfaces with the brand navy as ink and the same
+  teal/cyan accent family — deliberately not generic shadcn grey.
+
+  Two places where a naive inversion would fail, so the values differ on
+  purpose: the dark accents #5eead4 and #669a62 both fall below 3:1 on white,
+  so light uses #0d9488 / #4a7d46 instead; and elevation flips — in dark the
+  elevated surface is lighter than the page, in light the page is tinted and
+  the elevated surface is plain white.
+*/
+.light {
+  color-scheme: light;
+  --background: #f5f9fb;
+  --foreground: #0b1822;
+  --card: #ffffff;
+  --card-foreground: #0b1822;
+  --popover: #ffffff;
+  --popover-foreground: #0b1822;
+  --primary: #2f6f8f;
+  --primary-foreground: #ffffff;
+  --secondary: #e8eff4;
+  --secondary-foreground: #0b1822;
+  --muted: #eef3f7;
+  --muted-foreground: #55697a;
+  --accent: #e4eef4;
+  --accent-foreground: #0b1822;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #d3e0e9;
+  --input: #d3e0e9;
+  --ring: #2f6f8f;
+  --chart-1: #2f6f8f;
+  --chart-2: #4a7d46;
+  --chart-3: #0d9488;
+  --chart-4: #d97706;
+  --chart-5: #dc2626;
+  --sidebar: #eaf2f7;
+  --sidebar-foreground: #0b1822;
+  --sidebar-primary: #2f6f8f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(13, 148, 136, 0.1);
+  --sidebar-accent-foreground: #0f766e;
+  --sidebar-border: #d3e0e9;
+  --sidebar-ring: #2f6f8f;
+  --owned: #4a7d46;
+  --title-highlight: #124b63;
+  --nav-active: #0f766e;
+  --nav-active-foreground: #0f766e;
+  --surface-elevated: #ffffff;
+
+  --primary-hover: #245a75;
+  --border-strong: #b9cddb;
+  --overlay-hover: rgba(11, 24, 34, 0.045);
+  --overlay-border: rgba(11, 24, 34, 0.1);
+  --overlay-border-hover: rgba(11, 24, 34, 0.16);
+  --shadow-popup: 0 4px 24px rgba(15, 40, 60, 0.12);
+  --icon-filter: none;
+  --icon-filter-strong: none;
+  --nav-active-icon: #0d9488;
+  --nav-hover-text: #0f766e;
+  --nav-badge-bg: rgba(13, 148, 136, 0.1);
+  --nav-badge-border: rgba(13, 148, 136, 0.28);
+  --nav-icon-glow: rgba(13, 148, 136, 0.2);
+  --nav-header-border: rgba(18, 75, 99, 0.1);
+  --text-secondary: #55697a;
+  --text-muted: #64748b;
+  --text-faint: #8a9aa8;
+  --text-section: #5b7c96;
+  --text-slate: #64748b;
+  --text-slate-light: #7d8f9e;
+  --text-slate-bright: #1e293b;
+  --text-slate-pale: #0f172a;
+  --image-gradient-from: #eef5f9;
+  --image-gradient-to: #e2ecf2;
+  --accent-glow: rgba(47, 111, 143, 0.28);
+  --accent-faint: rgba(47, 111, 143, 0.1);
+  --accent-separator: rgba(47, 111, 143, 0.22);
+  --accent-handle: rgba(47, 111, 143, 0.35);
+  --owned-faint: rgba(74, 125, 70, 0.14);
+  --owned-border: rgba(74, 125, 70, 0.35);
+  --owned-border-hover: rgba(74, 125, 70, 0.7);
+  --owned-on-badge: #ffffff;
+  --success-faint: rgba(74, 125, 70, 0.12);
+  --chase: #d92d20;
+  --chase-faint: rgba(217, 45, 32, 0.12);
+  --warning: #b45309;
 }
 
 @layer base {
@@ -137,7 +244,7 @@
 
 /* Always emitted — Tailwind does not generate text-title-highlight from @theme alone */
 .text-title-highlight {
-  color: #bfe9ff;
+  color: var(--title-highlight);
 }
 
 /* Catalog infinite-scroll list — slim scrollbar aligned to app palette */
@@ -162,17 +269,16 @@
 }
 
 .scrollbar-catalog::-webkit-scrollbar-thumb:hover {
-  background: #4e7a93;
+  background: var(--primary-hover);
 }
 
 /* AG Grid — sync with lib/theme/diecast-theme.ts */
 .ag-theme-quartz {
-  color-scheme: dark;
-
+  /* color-scheme is inherited from :root / .light — do not pin it here. */
   --ag-font-family: var(--font-geist-sans);
   --ag-font-size: 14px;
 
-  --ag-active-color: #5eead4;
+  --ag-active-color: var(--nav-active-icon);
   --ag-background-color: var(--background);
   --ag-foreground-color: var(--foreground);
   --ag-data-color: var(--foreground);
@@ -181,18 +287,19 @@
   --ag-disabled-foreground-color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
 
   --ag-border-color: var(--border);
-  --ag-secondary-border-color: #2a4555;
+  --ag-secondary-border-color: var(--border-strong);
 
   /* Column dividers (disabled by default in AG Grid) */
   --ag-header-column-separator-display: block;
-  --ag-header-column-separator-color: #2a4555;
+  --ag-header-column-separator-color: var(--border-strong);
   --ag-header-column-separator-width: 1px;
   --ag-header-column-resize-handle-display: block;
-  --ag-header-column-resize-handle-color: #2a4555;
+  --ag-header-column-resize-handle-color: var(--border-strong);
   --ag-cell-horizontal-border: solid var(--border);
 
-  /* Invert baked-in dark icons (search, etc.) for dark UI */
-  --ag-icon-filter: invert(1) brightness(1.15);
+  /* Quartz's icons are drawn for a light background, so they need inverting on
+     the dark theme and left alone on the light one. */
+  --ag-icon-filter: var(--icon-filter);
 
   --ag-header-background-color: var(--card);
   --ag-tooltip-background-color: var(--surface-elevated);
@@ -203,9 +310,9 @@
 
   --ag-odd-row-background-color: var(--background);
   /* Match sidebar: hover = subtle lift, selected = teal tint */
-  --ag-row-hover-color: rgba(255, 255, 255, 0.03);
+  --ag-row-hover-color: var(--overlay-hover);
   --ag-selected-row-background-color: var(--sidebar-accent);
-  --ag-column-hover-color: rgba(255, 255, 255, 0.03);
+  --ag-column-hover-color: var(--overlay-hover);
 
   --ag-checkbox-background-color: var(--card);
   --ag-checkbox-unchecked-color: var(--muted-foreground);
@@ -220,7 +327,7 @@
   --ag-icon-font-color: var(--foreground);
 
   --ag-card-shadow: none;
-  --ag-popup-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  --ag-popup-shadow: var(--shadow-popup);
   --ag-filter-panel-apply-button-color: var(--primary-foreground);
   --ag-filter-panel-apply-button-background-color: var(--primary);
 }
@@ -346,7 +453,7 @@
 .ag-theme-quartz .ag-menu-option:hover,
 .ag-theme-quartz .ag-menu-option-active,
 .ag-popup-child .ag-menu-option:hover {
-  background-color: rgba(255, 255, 255, 0.03) !important;
+  background-color: var(--overlay-hover) !important;
 }
 
 .ag-theme-quartz .ag-menu-option:hover .ag-icon,
@@ -451,7 +558,6 @@
 
 /* Popups portaled without theme class — fallback */
 .ag-popup-child:not(.ag-theme-quartz) {
-  color-scheme: dark;
   --ag-background-color: var(--background);
   --ag-foreground-color: var(--foreground);
   --ag-border-color: var(--border);
@@ -459,7 +565,7 @@
   --ag-input-focus-border-color: var(--primary);
   --ag-menu-background-color: var(--surface-elevated);
   --ag-icon-font-color: var(--foreground);
-  --ag-icon-filter: invert(1) brightness(1.15);
+  --ag-icon-filter: var(--icon-filter);
   background-color: var(--surface-elevated);
   color: var(--foreground);
 }
@@ -470,7 +576,7 @@
 }
 
 .ag-popup-child:not(.ag-theme-quartz) .ag-menu .ag-icon::after {
-  filter: invert(1) brightness(1.15);
+  filter: var(--icon-filter);
   opacity: 0.9;
 }
 
@@ -504,7 +610,7 @@
 .ag-popup-child:not(.ag-theme-quartz) .ag-filter-filter .ag-input-wrapper::before,
 .ag-popup-child:not(.ag-theme-quartz) .ag-input-wrapper::before {
   opacity: 0.75 !important;
-  filter: invert(1) brightness(1.2) !important;
+  filter: var(--icon-filter-strong) !important;
 }
 
 /* Filter option dropdown (Contains / Does not contain) — single outer border only */

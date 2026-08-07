@@ -251,7 +251,7 @@ export default function CatalogClient({
           {searchOpen && (
             <div className="flex flex-1 items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#52525B]" />
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-faint)]" />
                 <Input
                   autoFocus
                   value={search}
@@ -326,7 +326,7 @@ export default function CatalogClient({
 
       {/* Results bar */}
       <div className="flex items-center justify-between px-4 py-2.5">
-        <p className="text-xs text-[#52525B]">
+        <p className="text-xs text-[var(--text-faint)]">
           {filtered.length} {filtered.length === 1 ? "result" : "results"}
           {search && (
             <span className="ml-1">

@@ -145,7 +145,7 @@ export default function CardDetailSheet({
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center">
-                  <svg className="h-16 w-16 text-[#2a4555]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                  <svg className="h-16 w-16 text-[var(--border-strong)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
@@ -203,7 +203,7 @@ export default function CardDetailSheet({
               )}
 
               {/* Bottom fade into content */}
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#0e1c28] to-transparent" />
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[var(--surface-elevated)] to-transparent" />
             </div>
 
             {/* ---- Scrollable details ---- */}
@@ -221,7 +221,7 @@ export default function CardDetailSheet({
                       title="Copy title"
                     >
                       <span>{item.name}</span>
-                      <Copy className="mt-1 h-3.5 w-3.5 shrink-0 text-[#4B6B88] opacity-0 transition-opacity group-hover:opacity-100" />
+                      <Copy className="mt-1 h-3.5 w-3.5 shrink-0 text-[var(--text-section)] opacity-0 transition-opacity group-hover:opacity-100" />
                     </button>
                   </DrawerTitle>
                 </DrawerHeader>
@@ -240,7 +240,7 @@ export default function CardDetailSheet({
                   )}
                   <Badge
                     variant="outline"
-                    className="border-[rgba(45,212,191,0.18)] bg-[rgba(45,212,191,0.08)] text-[#99F6E4]"
+                    className="border-[var(--nav-badge-border)] bg-[var(--nav-badge-bg)] text-nav-active"
                   >
                     {item.brand_name}
                   </Badge>
@@ -315,8 +315,8 @@ export default function CardDetailSheet({
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-1.5">
-                                <ShoppingBag className="h-3 w-3 shrink-0 text-[#64748B]" />
-                                <p className="truncate text-[12px] font-semibold text-[#E2E8F0]">
+                                <ShoppingBag className="h-3 w-3 shrink-0 text-[var(--text-slate)]" />
+                                <p className="truncate text-[12px] font-semibold text-[var(--text-slate-bright)]">
                                   {p.shopName ?? "—"}
                                 </p>
                                 {p.isChase && (
@@ -325,20 +325,20 @@ export default function CardDetailSheet({
                                   </span>
                                 )}
                                 {isPreOrder && (
-                                  <span className="shrink-0 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#0b1822]">
+                                  <span className="shrink-0 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--owned-on-badge)]">
                                     Pre-order
                                   </span>
                                 )}
                               </div>
                               {p.platform && (
-                                <p className="mt-0.5 pl-[18px] text-[10px] text-[#64748B]">
+                                <p className="mt-0.5 pl-[18px] text-[10px] text-[var(--text-slate)]">
                                   via {p.platform}
                                 </p>
                               )}
                               {date && (
                                 <div className="mt-1 flex items-center gap-1.5">
-                                  <CalendarDays className="h-3 w-3 shrink-0 text-[#64748B]" />
-                                  <p className="text-[10px] text-[#64748B]">{date}</p>
+                                  <CalendarDays className="h-3 w-3 shrink-0 text-[var(--text-slate)]" />
+                                  <p className="text-[10px] text-[var(--text-slate)]">{date}</p>
                                 </div>
                               )}
                             </div>
@@ -349,26 +349,26 @@ export default function CardDetailSheet({
                                   <p
                                     className={cn(
                                       "text-sm font-bold",
-                                      p.isChase ? "text-destructive" : "text-[#F1F5F9]"
+                                      p.isChase ? "text-destructive" : "text-[var(--text-slate-pale)]"
                                     )}
                                   >
                                     {formatPrice(p.pricePerUnit)}
                                   </p>
-                                  <p className="text-[10px] text-[#64748B]">per unit</p>
+                                  <p className="text-[10px] text-[var(--text-slate)]">per unit</p>
                                 </>
                               ) : (
-                                <p className="text-sm text-[#52525B]">—</p>
+                                <p className="text-sm text-[var(--text-faint)]">—</p>
                               )}
                               <div className="mt-1 inline-flex items-center rounded-full bg-border px-2 py-0.5">
-                                <span className="text-[10px] font-semibold text-[#A1A1AA]">×{p.quantity}</span>
+                                <span className="text-[10px] font-semibold text-[var(--text-secondary)]">×{p.quantity}</span>
                               </div>
                             </div>
                           </div>
 
                           {p.totalPrice != null && p.quantity > 1 && (
                             <div className="mt-2 border-t border-border pt-2 text-right">
-                              <span className="text-[11px] text-[#71717A]">Total: </span>
-                              <span className="text-[11px] font-semibold text-[#A1A1AA]">{formatPrice(p.totalPrice)}</span>
+                              <span className="text-[11px] text-[var(--text-muted)]">Total: </span>
+                              <span className="text-[11px] font-semibold text-[var(--text-secondary)]">{formatPrice(p.totalPrice)}</span>
                             </div>
                           )}
                         </div>
@@ -381,7 +381,7 @@ export default function CardDetailSheet({
               {sortedPurchases.length === 0 && (
                 <div className="px-5 pb-8 pt-2">
                   <Separator className="mb-4 bg-border" />
-                  <p className="text-center text-xs text-[#52525B]">No purchase records</p>
+                  <p className="text-center text-xs text-[var(--text-faint)]">No purchase records</p>
                 </div>
               )}
             </div>

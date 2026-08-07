@@ -25,20 +25,11 @@ class DashboardData {
   final List<Purchase> recentPurchases;
 }
 
-/// Columns needed to compute every dashboard metric, plus the joined
-/// collection name/brand for the "recent purchases" list.
-const _purchaseSelect = '''
-  collection_id, quantity, price_per_unit, total_price, amount_paid,
-  payment_status, payment_date, po_order_id, ready_date, collected_date,
-  is_chase, created_at,
-  tbl_collection ( name, item_no, tbl_master_brand ( name ) )
-''';
-
 final dashboardProvider = FutureProvider.autoDispose<DashboardData>((ref) async {
   await ensureOnline();
   final rows = await supabase
       .from('tbl_purchase')
-      .select(_purchaseSelect)
+      .select(purchaseSelect)
       .timeout(requestTimeout);
 
   final purchases =
