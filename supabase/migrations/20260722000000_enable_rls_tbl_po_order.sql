@@ -6,7 +6,16 @@
 -- app), so authenticated-only access is enough. No anon policy here: the public
 -- /catalog page does not read this table.
 
+-- Written 2026-07-22 but never pushed; by 2026-08-07 the same policy had been
+-- created by hand in the Supabase dashboard. Postgres has no
+-- `create policy if not exists`, so drop first to keep this re-runnable —
+-- otherwise the duplicate name aborts the whole push. The dashboard policy is
+-- identical to the one below (for all, to authenticated, using/with check
+-- true), so the drop-and-recreate is a no-op in effect.
+
 alter table public.tbl_po_order enable row level security;
+
+drop policy if exists "Authenticated full access" on public.tbl_po_order;
 
 create policy "Authenticated full access"
   on public.tbl_po_order
