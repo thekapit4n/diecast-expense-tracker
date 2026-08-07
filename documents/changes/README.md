@@ -17,6 +17,7 @@ Use this folder to record project updates day by day in simple English.
 | [2026-07-20](2026-07-20.md) | Pre-order Tracker "Total pre-orders" summary card |
 | [2026-07-22](2026-07-22.md) | RLS enabled on pre-order table, database access rules audited |
 | [2026-07-31](2026-07-31.md) | Added "Facebook Bid" platform option to Add/Edit Purchase forms |
+| [2026-08-07](2026-08-07.md) | Light/Dark/System theme switcher, ScaleVault tab icon replaces Next.js default |
 
 ## File Naming Rule
 
