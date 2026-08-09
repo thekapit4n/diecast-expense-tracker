@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
+import '../../core/icons/huge_scan_search_icon.dart';
 import '../catalog/catalog_screen.dart';
 import '../home/home_screen.dart';
 import '../insights/insights_screen.dart';
@@ -19,8 +21,8 @@ class _Destination {
     this.page,
   });
 
-  final IconData icon;
-  final IconData selectedIcon;
+  final Widget icon;
+  final Widget selectedIcon;
   final String label;
 
   /// Null for action destinations (Scan).
@@ -31,31 +33,31 @@ class _Destination {
 
 const _destinations = [
   _Destination(
-    icon: Icons.dashboard_outlined,
-    selectedIcon: Icons.dashboard,
+    icon: HugeIcon(icon: HugeIcons.strokeRoundedHome01),
+    selectedIcon: HugeIcon(icon: HugeIcons.strokeRoundedHome01),
     label: 'Home',
     page: HomeScreen(),
   ),
   _Destination(
-    icon: Icons.grid_view_outlined,
-    selectedIcon: Icons.grid_view,
+    icon: HugeIcon(icon: HugeIcons.strokeRoundedGridView),
+    selectedIcon: HugeIcon(icon: HugeIcons.strokeRoundedGridView),
     label: 'Catalog',
     page: CatalogScreen(),
   ),
   _Destination(
-    icon: Icons.qr_code_scanner,
-    selectedIcon: Icons.qr_code_scanner,
+    icon: HugeScanSearchIcon(),
+    selectedIcon: HugeScanSearchIcon(),
     label: 'Scan',
   ),
   _Destination(
-    icon: Icons.schedule_outlined,
-    selectedIcon: Icons.schedule,
+    icon: HugeIcon(icon: HugeIcons.strokeRoundedPackageProcess),
+    selectedIcon: HugeIcon(icon: HugeIcons.strokeRoundedPackageProcess),
     label: 'Pre-orders',
     page: PreorderTrackerScreen(),
   ),
   _Destination(
-    icon: Icons.insights_outlined,
-    selectedIcon: Icons.insights,
+    icon: HugeIcon(icon: HugeIcons.strokeRoundedChartAnalysis),
+    selectedIcon: HugeIcon(icon: HugeIcons.strokeRoundedChartAnalysis),
     label: 'Insights',
     page: InsightsScreen(),
   ),
@@ -107,8 +109,8 @@ class _MainShellState extends State<MainShell> {
         destinations: [
           for (final d in _destinations)
             NavigationDestination(
-              icon: Icon(d.icon),
-              selectedIcon: Icon(d.selectedIcon),
+              icon: d.icon,
+              selectedIcon: d.selectedIcon,
               label: d.label,
             ),
         ],
