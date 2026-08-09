@@ -259,130 +259,104 @@ class _MonthTrendState extends State<_MonthTrend> {
   }
 }
 
-/// Top brands/shops by spend, drawn with fl_chart for the same grow-in and
-/// refresh animation as the month trend. RM amount and unit count live in the
-/// tap tooltip — there's no room for them alongside the bar once it's a real
-/// chart axis rather than a text row.
-class _Breakdown extends StatefulWidget {
+/// Top brands/shops by spend. Hand-rolled rather than fl_chart — the RM
+/// amount and unit count need to sit next to the bar and be readable at a
+/// glance, not hidden behind a tap-to-reveal tooltip. Still animates: the
+/// bar fills in and the money counts up, same as everything else here.
+class _Breakdown extends StatelessWidget {
   const _Breakdown({required this.rows, required this.emptyLabel});
   final List<CategorySpend> rows;
   final String emptyLabel;
 
   @override
-  State<_Breakdown> createState() => _BreakdownState();
-}
-
-class _BreakdownState extends State<_Breakdown> {
-  bool _grown = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _grown = true);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final rows = widget.rows;
     final peak = rows.isEmpty ? 0.0 : rows.first.amount;
 
     return AnimatedSwitcher(
       duration: _animDuration,
       child: rows.isEmpty
-          ? _EmptyNote(key: const ValueKey('empty'), widget.emptyLabel)
+          ? _EmptyNote(key: const ValueKey('empty'), emptyLabel)
           : Card(
               key: ValueKey(rows.map((r) => r.label).join('|')),
               elevation: 0,
               color: theme.colorScheme.surfaceContainerHighest,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 20, 8, 12),
-                child: SizedBox(
-                  height: 180,
-                  child: BarChart(
-                    duration: _animDuration,
-                    curve: Curves.easeOutCubic,
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      maxY: peak * 1.2,
-                      gridData: const FlGridData(show: false),
-                      borderData: FlBorderData(show: false),
-                      barTouchData: BarTouchData(
-                        touchTooltipData: BarTouchTooltipData(
-                          getTooltipColor: (_) => theme.colorScheme.inverseSurface,
-                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                            final r = rows[group.x];
-                            return BarTooltipItem(
-                              '${formatMoney(r.amount)}\n'
-                              '${r.units} unit${r.units == 1 ? '' : 's'}',
-                              TextStyle(
-                                color: theme.colorScheme.onInverseSurface,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      titlesData: FlTitlesData(
-                        show: true,
-                        leftTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            getTitlesWidget: (value, meta) {
-                              final i = value.toInt();
-                              if (i < 0 || i >= rows.length) return const SizedBox();
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: SizedBox(
-                                  width: 64,
-                                  child: Text(
-                                    rows[i].label,
-                                    maxLines: 2,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    for (final r in rows) ...[
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(r.label,
+                                    maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: theme.colorScheme.outline,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      barGroups: [
-                        for (var i = 0; i < rows.length; i++)
-                          BarChartGroupData(
-                            x: i,
-                            barRods: [
-                              BarChartRodData(
-                                toY: _grown ? rows[i].amount : 0,
-                                color: theme.colorScheme.secondary,
-                                width: 22,
-                                borderRadius: BorderRadius.circular(4),
+                                    style: theme.textTheme.bodyMedium),
+                              ),
+                              const SizedBox(width: 8),
+                              _AnimatedMoney(
+                                amount: r.amount,
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
-                      ],
-                    ),
-                  ),
+                          const SizedBox(height: 4),
+                          _Bar(
+                            fraction: peak == 0 ? 0 : r.amount / peak,
+                            color: theme.colorScheme.secondary,
+                          ),
+                          const SizedBox(height: 2),
+                          Text('${r.units} unit${r.units == 1 ? '' : 's'}',
+                              style: theme.textTheme.labelSmall
+                                  ?.copyWith(color: theme.colorScheme.outline)),
+                        ],
+                      ),
+                      if (r != rows.last) const SizedBox(height: 14),
+                    ],
+                  ],
                 ),
               ),
             ),
+    );
+  }
+}
+
+/// A single proportional bar that eases to its target width whenever
+/// [fraction] changes — used by [_Breakdown], which needs a compact bar
+/// alongside text rather than a full chart axis.
+class _Bar extends StatelessWidget {
+  const _Bar({required this.fraction, required this.color});
+  final double fraction;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    // Keep a sliver visible for tiny non-zero amounts, but show nothing at
+    // all for a genuinely empty row.
+    final target = fraction <= 0 ? 0.0 : fraction.clamp(0.02, 1.0);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        height: 8,
+        color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: target),
+          duration: _animDuration,
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) => FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: value,
+            child: child,
+          ),
+          child: ColoredBox(color: color),
+        ),
+      ),
     );
   }
 }
