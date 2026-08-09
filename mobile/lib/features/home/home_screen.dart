@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../core/error_view.dart';
 import '../../core/format.dart';
@@ -68,25 +69,41 @@ class _DashboardView extends StatelessWidget {
             _StatCard(
               label: 'Models owned',
               value: '${data.modelsOwned}',
-              icon: Icons.inventory_2_outlined,
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedCarParking02,
+                color: status.preOrder,
+                size: 22,
+              ),
               color: status.preOrder,
             ),
             _StatCard(
               label: 'Units owned',
               value: '${data.unitsOwned}',
-              icon: Icons.widgets_outlined,
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedGarage,
+                color: status.info,
+                size: 22,
+              ),
               color: status.info,
             ),
             _StatCard(
               label: 'Active pre-orders',
               value: '${data.activePreOrderUnits}',
-              icon: Icons.schedule,
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedPackageProcess,
+                color: status.partial,
+                size: 22,
+              ),
               color: status.partial,
             ),
             _StatCard(
               label: 'Ready to collect',
               value: '${data.readyToCollectUnits}',
-              icon: Icons.local_shipping_outlined,
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedPackageDelivered,
+                color: status.owned,
+                size: 22,
+              ),
               color: status.owned,
             ),
           ],
@@ -95,7 +112,11 @@ class _DashboardView extends StatelessWidget {
         _StatCard(
           label: 'Unpaid / partially paid orders',
           value: '${data.outstandingOrders}',
-          icon: Icons.payments_outlined,
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedTransaction,
+            color: status.unpaid,
+            size: 22,
+          ),
           color: status.unpaid,
           wide: true,
         ),
@@ -129,7 +150,7 @@ class _StatCard extends StatelessWidget {
 
   final String label;
   final String value;
-  final IconData icon;
+  final Widget icon;
   final Color color;
   final bool wide;
 
@@ -146,7 +167,7 @@ class _StatCard extends StatelessWidget {
             CircleAvatar(
               radius: 20,
               backgroundColor: color.withValues(alpha: 0.15),
-              child: Icon(icon, color: color, size: 22),
+              child: icon,
             ),
             const SizedBox(width: 12),
             Expanded(
