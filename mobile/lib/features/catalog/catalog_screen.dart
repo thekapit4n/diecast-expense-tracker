@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/error_view.dart';
 import '../../data/models/catalog_item.dart';
+import '../shell/nav_intent.dart';
 import 'catalog_data.dart';
 import 'item_detail_sheet.dart';
 import 'widgets/diecast_card.dart';
@@ -56,6 +57,13 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(catalogProvider);
+
+    // A "Models owned" dashboard-card tap lands here with Owned pre-applied.
+    ref.listen<HomeNavTarget?>(homeNavIntentProvider, (previous, next) {
+      if (next != HomeNavTarget.catalogOwned) return;
+      setState(() => _own = _OwnFilter.owned);
+      ref.read(homeNavIntentProvider.notifier).clear();
+    });
 
     return Scaffold(
       appBar: AppBar(title: const Text('Catalog')),

@@ -68,6 +68,8 @@
 		</array>
 		<key>NSCameraUsageDescription</key>
 		<string>Scan a diecast box to check if it's already in your collection.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Not used — the scanner only captures still photos, no audio.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Pick a photo of a diecast box to check if it's already in your collection.</string>
 		<key>UIStatusBarHidden</key>
