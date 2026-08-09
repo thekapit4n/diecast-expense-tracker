@@ -11,6 +11,7 @@ in `documents/changes/` so mobile and web history never mix.
 | [2026-07-19](2026-07-19.md) | Mobile app started: login, dashboard, catalog, scanner, purchase entry, pre-order tracker |
 | [2026-07-20](2026-07-20.md) | On-device (Phase 7): tracker layout fix, bulk collect, totals, Scan in menu; app icon, splash, ScaleVault rename, offline handling |
 | [2026-08-07](2026-08-07.md) | Light/Dark/System theme + dark-mode colour fixes, Settings screen, Insights tab, pre-order reminders |
+| [2026-08-09](2026-08-09.md) | Bottom nav and Home dashboard icons switched to HugeIcons |
 
 ## File Naming Rule
 
