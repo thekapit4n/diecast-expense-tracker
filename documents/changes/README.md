@@ -18,6 +18,7 @@ Use this folder to record project updates day by day in simple English.
 | [2026-07-22](2026-07-22.md) | RLS enabled on pre-order table, database access rules audited |
 | [2026-07-31](2026-07-31.md) | Added "Facebook Bid" platform option to Add/Edit Purchase forms |
 | [2026-08-07](2026-08-07.md) | Light/Dark/System theme switcher, ScaleVault tab icon, Brand Management add/edit/delete |
+| [2026-08-09](2026-08-09.md) | Pre-order edit now links to tracker, Collection Name field redesigned, sidebar icons switched to HugeIcons |
 
 ## File Naming Rule
 

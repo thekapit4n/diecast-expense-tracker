@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +6,10 @@ import '../../core/error_view.dart';
 import '../../core/format.dart';
 import '../../theme/app_theme.dart';
 import 'insights_data.dart';
+
+/// How long bars grow/shrink and money values count up, on first load and on
+/// every subsequent refresh.
+const _animDuration = Duration(milliseconds: 400);
 
 /// Spending insights: month-over-month, a six-month trend, and where the money
 /// goes by brand and shop. All derived from tbl_purchase — no new tables.
@@ -19,13 +24,20 @@ class InsightsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Insights')),
       body: RefreshIndicator(
         onRefresh: () async => ref.refresh(insightsProvider.future),
-        child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => AppErrorView(
-            error: e,
-            onRetry: () => ref.invalidate(insightsProvider),
+        child: AnimatedSwitcher(
+          duration: _animDuration,
+          child: async.when(
+            loading: () => const Center(
+              key: ValueKey('loading'),
+              child: CircularProgressIndicator(),
+            ),
+            error: (e, _) => AppErrorView(
+              key: const ValueKey('error'),
+              error: e,
+              onRetry: () => ref.invalidate(insightsProvider),
+            ),
+            data: (d) => _InsightsView(key: const ValueKey('data'), data: d),
           ),
-          data: (d) => _InsightsView(data: d),
         ),
       ),
     );
@@ -33,7 +45,7 @@ class InsightsScreen extends ConsumerWidget {
 }
 
 class _InsightsView extends StatelessWidget {
-  const _InsightsView({required this.data});
+  const _InsightsView({super.key, required this.data});
   final InsightsData data;
 
   @override
@@ -100,9 +112,11 @@ class _MonthComparison extends StatelessWidget {
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.outline)),
             const SizedBox(height: 4),
-            Text(formatMoney(data.thisMonth),
-                style: theme.textTheme.headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            _AnimatedMoney(
+              amount: data.thisMonth,
+              style: theme.textTheme.headlineMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -127,116 +141,248 @@ class _MonthComparison extends StatelessWidget {
   }
 }
 
-/// Six proportional bars. Deliberately hand-rolled — a charting package would
-/// be a large dependency for this, and these inherit the theme for free.
-class _MonthTrend extends StatelessWidget {
+/// Six-month spend trend, drawn with fl_chart so bars grow in on first load
+/// and animate between values whenever the underlying data refreshes.
+class _MonthTrend extends StatefulWidget {
   const _MonthTrend({required this.months});
   final List<MonthSpend> months;
 
   @override
+  State<_MonthTrend> createState() => _MonthTrendState();
+}
+
+class _MonthTrendState extends State<_MonthTrend> {
+  // Starts false so the first frame renders zero-height bars, then flips true
+  // a frame later — fl_chart's own swapAnimationDuration tweens the growth.
+  bool _grown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _grown = true);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final months = widget.months;
     final peak = months.fold<double>(0, (m, e) => e.amount > m ? e.amount : m);
 
-    if (peak == 0) {
-      return _EmptyNote('No payments recorded in the last $monthsOfHistory months');
-    }
-
-    return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            for (final m in months) ...[
-              Row(
-                children: [
-                  SizedBox(
-                    width: 34,
-                    child: Text(m.label,
-                        style: theme.textTheme.labelSmall
-                            ?.copyWith(color: theme.colorScheme.outline)),
-                  ),
-                  Expanded(
-                    child: _Bar(
-                      fraction: m.amount / peak,
-                      color: theme.colorScheme.primary,
+    return AnimatedSwitcher(
+      duration: _animDuration,
+      child: peak == 0
+          ? _EmptyNote(
+              key: const ValueKey('empty'),
+              'No payments recorded in the last $monthsOfHistory months',
+            )
+          : Card(
+              key: const ValueKey('chart'),
+              elevation: 0,
+              color: theme.colorScheme.surfaceContainerHighest,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 20, 16, 12),
+                child: SizedBox(
+                  height: 160,
+                  child: BarChart(
+                    duration: _animDuration,
+                    curve: Curves.easeOutCubic,
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: peak * 1.2,
+                      gridData: const FlGridData(show: false),
+                      borderData: FlBorderData(show: false),
+                      barTouchData: BarTouchData(
+                        touchTooltipData: BarTouchTooltipData(
+                          getTooltipColor: (_) => theme.colorScheme.inverseSurface,
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) => BarTooltipItem(
+                            formatMoney(months[group.x].amount),
+                            TextStyle(
+                              color: theme.colorScheme.onInverseSurface,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        leftTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 24,
+                            getTitlesWidget: (value, meta) {
+                              final i = value.toInt();
+                              if (i < 0 || i >= months.length) return const SizedBox();
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: Text(
+                                  months[i].label,
+                                  style: theme.textTheme.labelSmall
+                                      ?.copyWith(color: theme.colorScheme.outline),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      barGroups: [
+                        for (var i = 0; i < months.length; i++)
+                          BarChartGroupData(
+                            x: i,
+                            barRods: [
+                              BarChartRodData(
+                                toY: _grown ? months[i].amount : 0,
+                                color: theme.colorScheme.primary,
+                                width: 18,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 92,
-                    child: Text(
-                      formatMoney(m.amount),
-                      textAlign: TextAlign.right,
-                      style: theme.textTheme.labelSmall,
-                    ),
-                  ),
-                ],
+                ),
               ),
-              if (m != months.last) const SizedBox(height: 10),
-            ],
-          ],
-        ),
-      ),
+            ),
     );
   }
 }
 
-class _Breakdown extends StatelessWidget {
+/// Top brands/shops by spend, drawn with fl_chart for the same grow-in and
+/// refresh animation as the month trend. RM amount and unit count live in the
+/// tap tooltip — there's no room for them alongside the bar once it's a real
+/// chart axis rather than a text row.
+class _Breakdown extends StatefulWidget {
   const _Breakdown({required this.rows, required this.emptyLabel});
   final List<CategorySpend> rows;
   final String emptyLabel;
 
   @override
+  State<_Breakdown> createState() => _BreakdownState();
+}
+
+class _BreakdownState extends State<_Breakdown> {
+  bool _grown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _grown = true);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (rows.isEmpty) return _EmptyNote(emptyLabel);
-
     final theme = Theme.of(context);
-    final peak = rows.first.amount;
+    final rows = widget.rows;
+    final peak = rows.isEmpty ? 0.0 : rows.first.amount;
 
-    return Card(
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            for (final r in rows) ...[
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(r.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium),
+    return AnimatedSwitcher(
+      duration: _animDuration,
+      child: rows.isEmpty
+          ? _EmptyNote(key: const ValueKey('empty'), widget.emptyLabel)
+          : Card(
+              key: ValueKey(rows.map((r) => r.label).join('|')),
+              elevation: 0,
+              color: theme.colorScheme.surfaceContainerHighest,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 20, 8, 12),
+                child: SizedBox(
+                  height: 180,
+                  child: BarChart(
+                    duration: _animDuration,
+                    curve: Curves.easeOutCubic,
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: peak * 1.2,
+                      gridData: const FlGridData(show: false),
+                      borderData: FlBorderData(show: false),
+                      barTouchData: BarTouchData(
+                        touchTooltipData: BarTouchTooltipData(
+                          getTooltipColor: (_) => theme.colorScheme.inverseSurface,
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            final r = rows[group.x];
+                            return BarTooltipItem(
+                              '${formatMoney(r.amount)}\n'
+                              '${r.units} unit${r.units == 1 ? '' : 's'}',
+                              TextStyle(
+                                color: theme.colorScheme.onInverseSurface,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(formatMoney(r.amount),
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600)),
-                    ],
+                      titlesData: FlTitlesData(
+                        show: true,
+                        leftTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) {
+                              final i = value.toInt();
+                              if (i < 0 || i >= rows.length) return const SizedBox();
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: SizedBox(
+                                  width: 64,
+                                  child: Text(
+                                    rows[i].label,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.outline,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      barGroups: [
+                        for (var i = 0; i < rows.length; i++)
+                          BarChartGroupData(
+                            x: i,
+                            barRods: [
+                              BarChartRodData(
+                                toY: _grown ? rows[i].amount : 0,
+                                color: theme.colorScheme.secondary,
+                                width: 22,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  _Bar(
-                    fraction: peak == 0 ? 0 : r.amount / peak,
-                    color: theme.colorScheme.secondary,
-                  ),
-                  const SizedBox(height: 2),
-                  Text('${r.units} unit${r.units == 1 ? '' : 's'}',
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(color: theme.colorScheme.outline)),
-                ],
+                ),
               ),
-              if (r != rows.last) const SizedBox(height: 14),
-            ],
-          ],
-        ),
-      ),
+            ),
     );
   }
 }
@@ -248,13 +394,16 @@ class _Facts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final facts = <(String, String)>[
-      ('Collection value', formatMoney(data.collectionValue)),
-      ('Total paid, all time', formatMoney(data.totalSpend)),
-      ('Average per unit', formatMoney(data.avgPerUnit)),
-      ('Average per model', formatMoney(data.avgPerModel)),
-      ('Chase units owned', '${data.chaseUnits}'),
+    final moneyFacts = <(String, double)>[
+      ('Collection value', data.collectionValue),
+      ('Total paid, all time', data.totalSpend),
+      ('Average per unit', data.avgPerUnit),
+      ('Average per model', data.avgPerModel),
     ];
+    final valueStyle =
+        theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
+    final labelStyle =
+        theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline);
 
     return Card(
       elevation: 0,
@@ -263,22 +412,25 @@ class _Facts extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Column(
           children: [
-            for (final (label, value) in facts)
+            for (final (label, amount) in moneyFacts)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: Text(label,
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: theme.colorScheme.outline)),
-                    ),
-                    Text(value,
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    Expanded(child: Text(label, style: labelStyle)),
+                    _AnimatedMoney(amount: amount, style: valueStyle),
                   ],
                 ),
               ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(child: Text('Chase units owned', style: labelStyle)),
+                  Text('${data.chaseUnits}', style: valueStyle),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -286,26 +438,20 @@ class _Facts extends StatelessWidget {
   }
 }
 
-class _Bar extends StatelessWidget {
-  const _Bar({required this.fraction, required this.color});
-  final double fraction;
-  final Color color;
+/// Money text that eases from its previous value to [amount] whenever it
+/// changes — a soft count-up rather than a hard jump.
+class _AnimatedMoney extends StatelessWidget {
+  const _AnimatedMoney({required this.amount, this.style});
+  final double amount;
+  final TextStyle? style;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: Container(
-        height: 8,
-        color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4),
-        child: FractionallySizedBox(
-          alignment: Alignment.centerLeft,
-          // Keep a sliver visible for tiny non-zero amounts, but show nothing
-          // at all for a genuinely empty month.
-          widthFactor: fraction <= 0 ? 0 : fraction.clamp(0.02, 1.0),
-          child: ColoredBox(color: color),
-        ),
-      ),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: amount),
+      duration: _animDuration,
+      curve: Curves.easeOut,
+      builder: (context, value, _) => Text(formatMoney(value), style: style),
     );
   }
 }
@@ -320,7 +466,7 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _EmptyNote extends StatelessWidget {
-  const _EmptyNote(this.text);
+  const _EmptyNote(this.text, {super.key});
   final String text;
 
   @override

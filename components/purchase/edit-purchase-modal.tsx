@@ -36,6 +36,7 @@ import { createClient } from "@/lib/supabase/client"
 import { cn, formatDateForDatabase } from "@/lib/utils"
 import { LOVSelector, LOVItem } from "@/components/ui/lov-selector"
 import { ShopCombobox } from "@/components/ui/shop-combobox"
+import { PoOrderCombobox, type PoOrderOption } from "@/components/ui/po-order-combobox"
 import { resolveOrCreateShop } from "@/lib/shop/resolve-or-create"
 import { useUserTracking } from "@/lib/auth/use-user-tracking"
 
@@ -66,6 +67,16 @@ const editPurchaseSchema = z.object({
   platform: z.string().optional(),
   preOrderStatus: z.string().optional(),
   preOrderDate: z.date().optional().nullable(),
+  linkToPoOrder: z.string().optional(),
+  poOrderId: z.string().nullable().optional(),
+  poOrderReference: z.string().optional(),
+  poOrderChannel: z.string().optional(),
+  poOrderEta: z.string().optional(),
+  poOrderOrderDate: z.date().optional().nullable(),
+  poOrderCloseDate: z.date().optional().nullable(),
+  poOrderFullPayment: z.string().optional(),
+  poOrderSourceLink: z.string().optional(),
+  variantStatus: z.string().optional(),
   paymentStatus: z.string().optional(),
   paymentMethod: z.string().optional(),
   paymentDate: z.date().optional().nullable(),
@@ -110,6 +121,7 @@ export function EditPurchaseModal({
   const [isLoading, setIsLoading] = useState(true)
   const [isReloadingBrands, setIsReloadingBrands] = useState(false)
   const [originalPaymentStatus, setOriginalPaymentStatus] = useState<string | null>(null)
+  const [poOrderSearchInput, setPoOrderSearchInput] = useState("")
   const [miniGtProductUrl, setMiniGtProductUrl] = useState("")
   const [isImportingMiniGtImage, setIsImportingMiniGtImage] = useState(false)
   const [isCheckingMiniGtImage, setIsCheckingMiniGtImage] = useState(false)
@@ -126,10 +138,13 @@ export function EditPurchaseModal({
   const [showPaymentStatusLOV, setShowPaymentStatusLOV] = useState(false)
   const [showEditionTypeLOV, setShowEditionTypeLOV] = useState(false)
   const [showPackagingTypeLOV, setShowPackagingTypeLOV] = useState(false)
+  const [showPoOrderChannelLOV, setShowPoOrderChannelLOV] = useState(false)
+  const [showVariantStatusLOV, setShowVariantStatusLOV] = useState(false)
   
   // Collapsible sections state
   const [collapsedSections, setCollapsedSections] = useState({
     preorder: true,
+    poOrder: true,
     additional: true,
   })
 
@@ -147,6 +162,16 @@ export function EditPurchaseModal({
       platform: "",
       preOrderStatus: "",
       preOrderDate: null,
+      linkToPoOrder: "0",
+      poOrderId: null,
+      poOrderReference: "",
+      poOrderChannel: "",
+      poOrderEta: "",
+      poOrderOrderDate: null,
+      poOrderCloseDate: null,
+      poOrderFullPayment: "0",
+      poOrderSourceLink: "",
+      variantStatus: "regular",
       paymentStatus: "unpaid",
       paymentMethod: "",
       paymentDate: null,
@@ -274,6 +299,9 @@ export function EditPurchaseModal({
             platform: data.platform || "",
             preOrderStatus: data.pre_order_status || "",
             preOrderDate: parseDateFromDatabase(data.pre_order_date),
+            linkToPoOrder: data.po_order_id ? "1" : "0",
+            poOrderId: data.po_order_id || null,
+            variantStatus: data.variant_status || "regular",
             paymentStatus: data.payment_status || "unpaid",
             paymentMethod: data.payment_method || "",
             paymentDate: parseDateFromDatabase(data.payment_date),
@@ -294,7 +322,32 @@ export function EditPurchaseModal({
           setCollapsedSections((prev) => ({
             ...prev,
             additional: !hasAdditionalInfo,
+            poOrder: !data.po_order_id,
           }))
+
+          // Already linked to a PO order — load its details so the combobox
+          // and new-order fields reflect the existing link instead of looking
+          // like a fresh, unlinked pre-order.
+          if (data.po_order_id) {
+            const { data: poOrder, error: poOrderFetchError } = await supabase
+              .from("tbl_po_order")
+              .select("id, reference, channel, eta, po_close_date, full_payment, source_link, order_date")
+              .eq("id", data.po_order_id)
+              .single()
+
+            if (!poOrderFetchError && poOrder) {
+              form.setValue("poOrderReference", poOrder.reference || "")
+              form.setValue("poOrderChannel", poOrder.channel || "")
+              form.setValue("poOrderEta", poOrder.eta || "")
+              form.setValue("poOrderCloseDate", parseDateFromDatabase(poOrder.po_close_date))
+              form.setValue("poOrderOrderDate", parseDateFromDatabase(poOrder.order_date))
+              form.setValue("poOrderFullPayment", poOrder.full_payment ? "1" : "0")
+              form.setValue("poOrderSourceLink", poOrder.source_link || "")
+              setPoOrderSearchInput(poOrder.reference || "")
+            }
+          } else {
+            setPoOrderSearchInput("")
+          }
 
           const collectionRemark: string = data.tbl_collection?.remark || ""
           const normalizedItemNo: string = (data.tbl_collection?.item_no || "").trim().toUpperCase()
@@ -328,7 +381,7 @@ export function EditPurchaseModal({
   const pricePerUnit = parseFloat(form.watch("pricePerUnit")) || 0
   const totalPrice = quantity * pricePerUnit
 
-  const toggleSection = (section: "preorder" | "additional") => {
+  const toggleSection = (section: "preorder" | "poOrder" | "additional") => {
     setCollapsedSections((prev) => ({
       ...prev,
       [section]: !prev[section],
@@ -409,6 +462,13 @@ export function EditPurchaseModal({
 
 
   const onSubmit = async (data: EditPurchaseFormValues) => {
+    if (data.linkToPoOrder === "1" && !data.poOrderId && !data.poOrderReference?.trim()) {
+      toast.error(
+        'Enter a PO order reference (or pick an existing one) to appear on the Pre-order Tracker, or turn "Is this a pre-order?" back to No.'
+      )
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const updateFields = getUpdateFields()
@@ -439,6 +499,39 @@ export function EditPurchaseModal({
         country: data.country,
       })
 
+      // Resolve or create the PO order this item belongs to, if tracked.
+      // This is what makes the item show up on /purchase/preorders — the
+      // legacy pre_order_status field below is display-only on the list.
+      let poOrderId: string | null = null
+      if (data.linkToPoOrder === "1") {
+        if (data.poOrderId) {
+          poOrderId = data.poOrderId
+        } else if (data.poOrderReference?.trim()) {
+          const { data: poOrderData, error: poOrderError } = await supabase
+            .from("tbl_po_order")
+            .insert({
+              shop_id: shopId,
+              reference: data.poOrderReference.trim(),
+              channel: data.poOrderChannel || null,
+              eta: data.poOrderEta || null,
+              po_close_date: formatDateForDatabase(data.poOrderCloseDate),
+              full_payment: data.poOrderFullPayment === "1",
+              source_link: data.poOrderSourceLink?.trim() || null,
+              order_date: formatDateForDatabase(data.poOrderOrderDate ?? new Date()),
+              ...updateFields,
+            })
+            .select("id")
+            .single()
+
+          if (poOrderError) {
+            console.error("PO order error:", poOrderError)
+            toast.error("Failed to create PO order")
+          } else {
+            poOrderId = poOrderData?.id ?? null
+          }
+        }
+      }
+
       const { error: purchaseError } = await supabase
         .from("tbl_purchase")
         .update({
@@ -449,6 +542,8 @@ export function EditPurchaseModal({
           platform: data.platform || null,
           pre_order_status: data.preOrderStatus || null,
           pre_order_date: formatDateForDatabase(data.preOrderDate),
+          po_order_id: poOrderId,
+          variant_status: data.linkToPoOrder === "1" ? (data.variantStatus || "regular") : null,
           payment_status: data.paymentStatus || null,
           payment_method: data.paymentMethod && data.paymentMethod !== "none" ? data.paymentMethod : null,
           payment_date: formatDateForDatabase(data.paymentDate),
@@ -609,6 +704,20 @@ export function EditPurchaseModal({
     { id: "pending", label: "Pending" },
     { id: "paid", label: "Paid" },
     { id: "cancelled", label: "Cancelled" },
+  ]
+
+  const poOrderChannelLOVItems: LOVItem[] = [
+    { id: "facebook", label: "Facebook" },
+    { id: "whatsapp", label: "WhatsApp" },
+    { id: "instagram", label: "Instagram" },
+    { id: "other", label: "Other" },
+  ]
+
+  const variantStatusLOVItems: LOVItem[] = [
+    { id: "regular", label: "Regular" },
+    { id: "chase", label: "Chase" },
+    { id: "combo", label: "Combo (chase + regular)" },
+    { id: "unknown", label: "Unknown — reveal later (random chase)" },
   ]
 
   const paymentStatusLOVItems: LOVItem[] = [
@@ -1155,6 +1264,293 @@ export function EditPurchaseModal({
                   )}
                 </div>
 
+                {/* Pre-order Tracking - Collapsible (drives /purchase/preorders visibility) */}
+                <div className="space-y-4 border-t pt-4">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection("poOrder")}
+                    className="flex w-full items-center justify-between text-sm font-semibold hover:text-primary"
+                  >
+                    <span>Pre-order Tracking (optional)</span>
+                    {collapsedSections.poOrder ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronUp className="h-4 w-4" />
+                    )}
+                  </button>
+
+                  {!collapsedSections.poOrder && (
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="linkToPoOrder"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Is this a pre-order?</FormLabel>
+                            <FormControl>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full justify-between"
+                                onClick={() => {
+                                  const next = field.value === "1" ? "0" : "1"
+                                  field.onChange(next)
+
+                                  if (next === "1") {
+                                    const currentRef = form.getValues("poOrderReference")
+                                    if (!currentRef?.trim()) {
+                                      const itemNoValue = form.getValues("itemNo")?.trim()
+                                      const collectionNameValue = form.getValues("collectionName")
+                                      const suggested = itemNoValue
+                                        ? `${itemNoValue} — ${collectionNameValue}`
+                                        : collectionNameValue
+                                      form.setValue("poOrderReference", suggested)
+                                      setPoOrderSearchInput(suggested)
+                                    }
+                                  }
+                                }}
+                              >
+                                {field.value === "1" ? "Yes" : "No"}
+                              </Button>
+                            </FormControl>
+                            <FormDescription>
+                              Say Yes to link this item to a PO order — groups it with others bought under the same deal, tracks ETA/close date once, and makes it appear on /purchase/preorders.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {form.watch("linkToPoOrder") === "1" && (
+                        <>
+                          <FormItem>
+                            <FormLabel>PO Order</FormLabel>
+                            <FormControl>
+                              <PoOrderCombobox
+                                value={form.watch("poOrderId") ?? null}
+                                inputValue={poOrderSearchInput || form.watch("poOrderReference") || ""}
+                                onInputChange={(val) => {
+                                  setPoOrderSearchInput(val)
+                                  form.setValue("poOrderReference", val)
+                                  form.setValue("poOrderId", null)
+                                }}
+                                onValueChange={(order: PoOrderOption | null) => {
+                                  if (order) {
+                                    form.setValue("poOrderId", order.id)
+                                    form.setValue("poOrderReference", order.reference || "")
+                                    form.setValue("poOrderChannel", order.channel || "")
+                                    form.setValue("poOrderEta", order.eta || "")
+                                    form.setValue("poOrderFullPayment", order.full_payment ? "1" : "0")
+                                    form.setValue("poOrderSourceLink", order.source_link || "")
+                                    setPoOrderSearchInput(order.reference || "")
+                                  } else {
+                                    form.setValue("poOrderId", null)
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Search an existing order to add this item to it, or type a new reference (e.g. &quot;PRE035&quot;) to start tracking a new one.
+                            </FormDescription>
+                          </FormItem>
+
+                          {!form.watch("poOrderId") && form.watch("poOrderReference") && (
+                            <div className="space-y-4 rounded-md border border-dashed p-4">
+                              <p className="text-xs text-muted-foreground">
+                                New order details — seller comes from the Shop Information below.
+                              </p>
+                              <FormField
+                                control={form.control}
+                                name="poOrderOrderDate"
+                                render={({ field }) => (
+                                  <FormItem className="flex flex-col">
+                                    <FormLabel>Order Date</FormLabel>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <FormControl>
+                                          <Button
+                                            variant="outline"
+                                            className={cn(
+                                              "w-full pl-3 text-left font-normal",
+                                              !field.value && "text-muted-foreground"
+                                            )}
+                                          >
+                                            {field.value ? format(field.value, "dd-MM-yyyy") : <span>Defaults to today</span>}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                          </Button>
+                                        </FormControl>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                          mode="single"
+                                          selected={field.value || undefined}
+                                          onSelect={field.onChange}
+                                          defaultMonth={field.value || undefined}
+                                          captionLayout="dropdown"
+                                          fromYear={2024}
+                                          toYear={new Date().getFullYear()}
+                                          disabled={(date) => date > new Date() || date < new Date("2024-01-01")}
+                                          initialFocus
+                                        />
+                                      </PopoverContent>
+                                    </Popover>
+                                    <FormDescription>When you actually placed/committed to this deal.</FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <FormField
+                                  control={form.control}
+                                  name="poOrderChannel"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Channel</FormLabel>
+                                      <FormControl>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          className="w-full justify-between"
+                                          onClick={() => setShowPoOrderChannelLOV(true)}
+                                        >
+                                          {field.value ? (
+                                            poOrderChannelLOVItems.find((c) => c.id === field.value)?.label
+                                          ) : (
+                                            <span className="text-muted-foreground">Select channel</span>
+                                          )}
+                                        </Button>
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name="poOrderEta"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>ETA</FormLabel>
+                                      <FormControl>
+                                        <Input placeholder="e.g. Q1 2027, After event" {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              <FormField
+                                control={form.control}
+                                name="poOrderSourceLink"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Source Link</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="url"
+                                        placeholder="https://facebook.com/... (or WhatsApp/IG post link)"
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormDescription>
+                                      Link to the seller&apos;s PO post so you can find it again later.
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <FormField
+                                  control={form.control}
+                                  name="poOrderCloseDate"
+                                  render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                      <FormLabel>PO Close Date</FormLabel>
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <FormControl>
+                                            <Button
+                                              variant="outline"
+                                              className={cn(
+                                                "w-full pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                              )}
+                                            >
+                                              {field.value ? format(field.value, "dd-MM-yyyy") : <span>Optional</span>}
+                                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                          </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                          <Calendar
+                                            mode="single"
+                                            selected={field.value || undefined}
+                                            onSelect={field.onChange}
+                                            defaultMonth={field.value || undefined}
+                                            captionLayout="dropdown"
+                                            fromYear={2024}
+                                            toYear={new Date().getFullYear() + 5}
+                                            initialFocus
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={form.control}
+                                  name="poOrderFullPayment"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Seller requires full payment upfront?</FormLabel>
+                                      <FormControl>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          className="w-full justify-between"
+                                          onClick={() => field.onChange(field.value === "1" ? "0" : "1")}
+                                        >
+                                          {field.value === "1" ? "Yes" : "No — pay on pickup"}
+                                        </Button>
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <FormField
+                            control={form.control}
+                            name="variantStatus"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Variant</FormLabel>
+                                <FormControl>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="w-full justify-between"
+                                    onClick={() => setShowVariantStatusLOV(true)}
+                                  >
+                                    {variantStatusLOVItems.find((v) => v.id === field.value)?.label || "Regular"}
+                                  </Button>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Item Specifications */}
                 <div className="space-y-4 border-t pt-4">
                   <h4 className="text-sm font-semibold">Item Specifications</h4>
@@ -1537,6 +1933,26 @@ export function EditPurchaseModal({
         value={form.watch("preOrderStatus")}
         onValueChange={(value) => form.setValue("preOrderStatus", value.toString())}
         searchPlaceholder="Search statuses..."
+      />
+
+      <LOVSelector
+        open={showPoOrderChannelLOV}
+        onOpenChange={setShowPoOrderChannelLOV}
+        title="Select Channel"
+        items={poOrderChannelLOVItems}
+        value={form.watch("poOrderChannel")}
+        onValueChange={(value) => form.setValue("poOrderChannel", value.toString())}
+        searchPlaceholder="Search channels..."
+      />
+
+      <LOVSelector
+        open={showVariantStatusLOV}
+        onOpenChange={setShowVariantStatusLOV}
+        title="Select Variant"
+        items={variantStatusLOVItems}
+        value={form.watch("variantStatus")}
+        onValueChange={(value) => form.setValue("variantStatus", value.toString())}
+        searchPlaceholder="Search variants..."
       />
 
       <LOVSelector

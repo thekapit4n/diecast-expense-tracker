@@ -8,6 +8,7 @@ import '../../data/models/purchase.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/status_style.dart';
 import '../settings/settings_screen.dart';
+import '../shell/nav_intent.dart';
 import 'dashboard_data.dart';
 
 /// Home dashboard: collection summary + recent purchases + Scan button.
@@ -46,13 +47,15 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _DashboardView extends StatelessWidget {
+class _DashboardView extends ConsumerWidget {
   const _DashboardView({required this.data});
   final DashboardData data;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final status = AppStatusColors.of(context);
+    void goTo(HomeNavTarget target) =>
+        ref.read(homeNavIntentProvider.notifier).set(target);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -75,6 +78,7 @@ class _DashboardView extends StatelessWidget {
                 size: 22,
               ),
               color: status.preOrder,
+              onTap: () => goTo(HomeNavTarget.catalogOwned),
             ),
             _StatCard(
               label: 'Units owned',
@@ -105,6 +109,7 @@ class _DashboardView extends StatelessWidget {
                 size: 22,
               ),
               color: status.owned,
+              onTap: () => goTo(HomeNavTarget.preorderReady),
             ),
           ],
         ),
@@ -119,6 +124,7 @@ class _DashboardView extends StatelessWidget {
           ),
           color: status.unpaid,
           wide: true,
+          onTap: () => goTo(HomeNavTarget.preorderUnpaid),
         ),
 
         const SizedBox(height: 24),
@@ -146,6 +152,7 @@ class _StatCard extends StatelessWidget {
     required this.icon,
     required this.color,
     this.wide = false,
+    this.onTap,
   });
 
   final String label;
@@ -153,40 +160,54 @@ class _StatCard extends StatelessWidget {
   final Widget icon;
   final Color color;
   final bool wide;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final radius = BorderRadius.circular(12);
     return Card(
       elevation: 0,
       color: theme.colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: color.withValues(alpha: 0.15),
-              child: icon,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(value,
-                      style: theme.textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold)),
-                  Text(label,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.outline),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis),
-                ],
+      shape: RoundedRectangleBorder(borderRadius: radius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: color.withValues(alpha: 0.15),
+                child: icon,
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(value,
+                        style: theme.textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(label,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.colorScheme.outline),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+              // Same chevron used on tappable rows elsewhere (e.g. the
+              // Pre-order Tracker's item list) — the only visual cue that
+              // this card, unlike its neighbours, goes somewhere.
+              if (onTap != null)
+                Icon(Icons.chevron_right,
+                    size: 20, color: theme.colorScheme.outline),
+            ],
+          ),
         ),
       ),
     );

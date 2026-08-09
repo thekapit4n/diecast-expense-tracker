@@ -8,6 +8,7 @@ import '../../core/po_status.dart';
 import '../../data/models/po_item.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/status_style.dart';
+import '../shell/nav_intent.dart';
 import 'po_status_sheet.dart';
 import 'preorder_providers.dart';
 
@@ -23,6 +24,7 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
   String _search = '';
   OrderTab _tab = OrderTab.pending;
   bool _showCancelled = false;
+  bool _unpaidOnly = false;
   final Set<String> _selected = {};
 
   /// Bulk-collect selection is only offered on the Ready tab.
@@ -37,6 +39,29 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(poItemsProvider);
+
+    // A "Ready to collect" / "Unpaid" dashboard-card tap lands here with the
+    // matching tab/filter pre-applied.
+    ref.listen<HomeNavTarget?>(homeNavIntentProvider, (previous, next) {
+      switch (next) {
+        case HomeNavTarget.preorderReady:
+          setState(() {
+            _tab = OrderTab.ready;
+            _showCancelled = false;
+            _unpaidOnly = false;
+          });
+        case HomeNavTarget.preorderUnpaid:
+          setState(() {
+            _tab = OrderTab.pending;
+            _showCancelled = false;
+            _unpaidOnly = true;
+          });
+        case HomeNavTarget.catalogOwned:
+        case null:
+          return;
+      }
+      ref.read(homeNavIntentProvider.notifier).clear();
+    });
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pre-order Tracker')),
@@ -141,6 +166,18 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
                 }),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilterChip(
+              label: const Text('Unpaid only'),
+              selected: _unpaidOnly,
+              onSelected: (v) => setState(() {
+                _unpaidOnly = v;
+                _selected.clear();
+              }),
+            ),
           ),
           const SizedBox(height: 12),
 
@@ -366,6 +403,14 @@ class _PreorderTrackerScreenState extends ConsumerState<PreorderTrackerScreen> {
 
     final groups = map.values.where((g) {
       if (_showCancelled) return true;
+      if (_unpaidOnly) {
+        final hasBalanceDue = g.any((i) => balanceForItem(
+              collectedDate: i.collectedDate,
+              totalPrice: i.totalPrice,
+              amountPaid: i.amountPaid,
+            ) > 0);
+        if (!hasBalanceDue) return false;
+      }
       return orderTabForGroup(
               g.map((i) => (readyDate: i.readyDate, collectedDate: i.collectedDate)).toList()) ==
           _tab;

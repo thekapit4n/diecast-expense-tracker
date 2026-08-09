@@ -1,23 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown, Plus } from "lucide-react"
+import { Check, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
 
 export interface CollectionOption {
   id: string
@@ -47,141 +33,119 @@ export function CollectionCombobox({
   onInputChange,
 }: CollectionComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const containerRef = React.useRef<HTMLDivElement>(null)
 
   const selectedCollection = collections.find(
     (collection) => collection.id === value
   )
 
+  React.useEffect(() => {
+    if (!open) return
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [open])
+
+  const showSuggestions = open && inputValue.trim().length >= 2
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <Input
           role="combobox"
           aria-expanded={open}
-          className={cn(
-            "w-full justify-between",
-            selectedCollection && "border-primary bg-primary/5"
-          )}
-        >
-          {selectedCollection ? (
-            <span className="truncate flex items-center gap-2">
-              <span className="text-primary">✓</span>
-              {selectedCollection.name}
-              {selectedCollection.item_no && (
-                <span className="text-muted-foreground"> ({selectedCollection.item_no})</span>
-              )}
-            </span>
-          ) : inputValue ? (
-            <span className="truncate flex items-center gap-2">
-              <span className="text-orange-500">+</span>
-              {inputValue}
-              <span className="text-xs text-muted-foreground">(new)</span>
-            </span>
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput 
-            placeholder="Search collection name..." 
-            value={inputValue}
-            onValueChange={onInputChange}
-          />
-          <CommandList>
-            {collections.length === 0 ? (
-              <CommandEmpty>
-                <div className="py-6 text-center text-sm">
-                  {inputValue.length < 2 ? (
-                    <p className="text-muted-foreground">Type at least 2 characters to search...</p>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-muted-foreground">No existing collection found</p>
-                      <div className="mx-auto max-w-xs rounded-md bg-primary/10 px-3 py-2 text-xs">
-                        <p className="font-medium text-primary">
-                          Close this to add as new collection:
-                        </p>
-                        <p className="mt-1 font-semibold text-foreground">"{inputValue}"</p>
-                      </div>
+          value={inputValue}
+          onChange={(e) => onInputChange(e.target.value)}
+          onFocus={() => setOpen(true)}
+          placeholder={placeholder}
+          className={cn(selectedCollection && "border-primary pr-8")}
+        />
+        {selectedCollection && (
+          <Check className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+        )}
+      </div>
+
+      {open && inputValue.trim().length > 0 && inputValue.trim().length < 2 && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-3 text-sm text-muted-foreground shadow-md">
+          Type at least 2 characters to search...
+        </div>
+      )}
+
+      {showSuggestions && (
+        <div className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-md border bg-popover shadow-md">
+          {collections.length > 0 && (
+            <div className="p-1">
+              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                Existing collections (click to reuse)
+              </div>
+              {collections.map((collection) => (
+                <button
+                  key={collection.id}
+                  type="button"
+                  role="option"
+                  aria-selected={value === collection.id}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    onValueChange(collection)
+                    onInputChange(collection.name)
+                    setOpen(false)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent"
+                >
+                  <Check
+                    className={cn(
+                      "h-4 w-4 shrink-0",
+                      value === collection.id ? "opacity-100 text-primary" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{collection.name}</span>
+                      {collection.item_no && (
+                        <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                          {collection.item_no}
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
-              </CommandEmpty>
-            ) : (
-              <>
-                <CommandGroup heading="Existing Collections (Click to reuse)">
-                  {collections.map((collection) => (
-                    <CommandItem
-                      key={collection.id}
-                      value={collection.id}
-                      onSelect={() => {
-                        onValueChange(collection)
-                        onInputChange(collection.name)
-                        setOpen(false)
-                      }}
-                    >
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          value === collection.id
-                            ? "opacity-100"
-                            : "opacity-0"
-                        )}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{collection.name}</span>
-                          {collection.item_no && (
-                            <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
-                              {collection.item_no}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {collection.brand_name}
-                          {collection.scale && ` • ${collection.scale}`}
-                        </div>
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-                
-                {inputValue && inputValue.length >= 2 && (
-                  <>
-                    <CommandSeparator />
-                    <CommandGroup heading="Or Create New">
-                      <CommandItem
-                        value="__create_new__"
-                        onSelect={() => {
-                          onValueChange(null)
-                          setOpen(false)
-                        }}
-                        className="bg-muted/50"
-                      >
-                        <Plus className="mr-2 h-4 w-4 text-primary" />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-primary">
-                              Create new collection
-                            </span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            "{inputValue}" with different brand/scale/item no
-                          </div>
-                        </div>
-                      </CommandItem>
-                    </CommandGroup>
-                  </>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {collection.brand_name}
+                      {collection.scale && ` • ${collection.scale}`}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className={cn("p-1", collections.length > 0 && "border-t")}>
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onValueChange(null)
+                setOpen(false)
+              }}
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent"
+            >
+              <Plus className="h-4 w-4 shrink-0 text-primary" />
+              <div className="flex-1">
+                <span className="font-medium text-primary">
+                  Add new collection &quot;{inputValue}&quot;
+                </span>
+                {collections.length > 0 && (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    With the brand/scale/item no set below
+                  </div>
                 )}
-              </>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
-
