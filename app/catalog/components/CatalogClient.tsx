@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { colors, tw } from "@/lib/theme/diecast-theme"
 import { AppNavSheet } from "@/components/navigation/app-nav-sheet"
 import BrandTabs from "./BrandTabs"
+import DesktopFilterBar from "./DesktopFilterBar"
 import DiecastCard from "./DiecastCard"
 import CardDetailSheet from "./CardDetailSheet"
 import FilterSortSheet, { type FilterState } from "./FilterSortSheet"
@@ -104,6 +105,7 @@ export default function CatalogClient({
     brands: activeBrand ? [activeBrand] : [],
     scales: [],
     status: "all",
+    chaseOnly: false,
     sort: isMiniGTBrand(activeBrand) ? "series_asc" : "name_asc",
   })
 
@@ -138,6 +140,7 @@ export default function CatalogClient({
     filters.brands.length +
     filters.scales.length +
     (filters.status !== "all" ? 1 : 0) +
+    (filters.chaseOnly ? 1 : 0) +
     (filters.sort !== "name_asc" ? 1 : 0)
 
   const filtered = useMemo(() => {
@@ -157,6 +160,9 @@ export default function CatalogClient({
       list = list.filter((i) => i.preOrderQty > 0)
     } else if (filters.status === "not_owned") {
       list = list.filter((i) => i.totalQty === 0 && i.preOrderQty === 0)
+    }
+    if (filters.chaseOnly) {
+      list = list.filter((i) => i.isChase)
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase()
@@ -297,7 +303,7 @@ export default function CatalogClient({
                 type="button"
                 onClick={() => setFilterOpen(true)}
                 className={cn(
-                  "relative rounded-full p-2 transition hover:bg-card",
+                  "relative rounded-full p-2 transition hover:bg-card lg:hidden",
                   activeFilterCount > 0 ? tw.accent : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -315,11 +321,20 @@ export default function CatalogClient({
           )}
         </div>
 
-        <div className="pb-3 pt-0.5">
+        <div className="pb-3 pt-0.5 lg:hidden">
           <BrandTabs
             brands={brands}
             selectedBrands={filters.brands}
             onChange={handleBrandTabsChange}
+          />
+        </div>
+
+        <div className="hidden px-4 pb-3 pt-0.5 lg:block">
+          <DesktopFilterBar
+            brands={brands}
+            scales={scales}
+            filters={filters}
+            onChange={handleFiltersChange}
           />
         </div>
       </header>
@@ -338,7 +353,7 @@ export default function CatalogClient({
           <button
             type="button"
             onClick={() => {
-              handleFiltersChange({ brands: [], scales: [], status: "all", sort: "name_asc" })
+              handleFiltersChange({ brands: [], scales: [], status: "all", chaseOnly: false, sort: "name_asc" })
               handleSearchChange("")
             }}
             className={cn("text-xs hover:underline", tw.accent)}

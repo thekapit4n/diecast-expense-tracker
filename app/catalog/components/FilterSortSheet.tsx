@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import BrandPicker from "./BrandPicker"
 import { cn } from "@/lib/utils"
 import { tw } from "@/lib/theme/diecast-theme"
 import type { CatalogBrand } from "@/lib/catalog-types"
@@ -15,6 +16,7 @@ export interface FilterState {
   brands: string[]
   scales: string[]
   status: StatusOption
+  chaseOnly: boolean
   sort: SortOption
 }
 
@@ -27,13 +29,13 @@ interface FilterSortSheetProps {
   onChange: (filters: FilterState) => void
 }
 
-const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "name_asc", label: "Name A–Z" },
   { value: "name_desc", label: "Name Z–A" },
   { value: "series_asc", label: "Series No." },
 ]
 
-const STATUS_OPTIONS: { value: StatusOption; label: string }[] = [
+export const STATUS_OPTIONS: { value: StatusOption; label: string }[] = [
   { value: "all", label: "All" },
   { value: "owned", label: "Owned" },
   { value: "pre_order", label: "Pre-order" },
@@ -73,19 +75,6 @@ export default function FilterSortSheet({
 }: FilterSortSheetProps) {
   const [draft, setDraft] = useState<FilterState>(filters)
 
-  function selectAllBrands() {
-    setDraft((prev) => ({ ...prev, brands: [] }))
-  }
-
-  function toggleBrand(name: string) {
-    setDraft((prev) => ({
-      ...prev,
-      brands: prev.brands.includes(name)
-        ? prev.brands.filter((b) => b !== name)
-        : [...prev.brands, name],
-    }))
-  }
-
   function toggleScale(scale: string) {
     setDraft((prev) => ({
       ...prev,
@@ -96,7 +85,7 @@ export default function FilterSortSheet({
   }
 
   function handleReset() {
-    const reset: FilterState = { brands: [], scales: [], status: "all", sort: "name_asc" }
+    const reset: FilterState = { brands: [], scales: [], status: "all", chaseOnly: false, sort: "name_asc" }
     setDraft(reset)
     onChange(reset)
     onClose()
@@ -150,26 +139,24 @@ export default function FilterSortSheet({
                 {opt.label}
               </PillButton>
             ))}
+            <PillButton
+              active={draft.chaseOnly}
+              onClick={() => setDraft((prev) => ({ ...prev, chaseOnly: !prev.chaseOnly }))}
+            >
+              Chase
+            </PillButton>
           </div>
         </div>
 
         {brands.length > 0 && (
           <div className="px-5 pt-5">
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Brand</p>
-            <div className="flex flex-wrap gap-2">
-              <PillButton active={draft.brands.length === 0} onClick={selectAllBrands}>
-                All
-              </PillButton>
-              {brands.map((brand) => (
-                <PillButton
-                  key={brand.id}
-                  active={draft.brands.includes(brand.name)}
-                  onClick={() => toggleBrand(brand.name)}
-                >
-                  {brand.name}
-                </PillButton>
-              ))}
-            </div>
+            <BrandPicker
+              brands={brands}
+              selected={draft.brands}
+              onChange={(next) => setDraft((prev) => ({ ...prev, brands: next }))}
+              variant="pill"
+            />
           </div>
         )}
 

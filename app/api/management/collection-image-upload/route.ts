@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No images were uploaded" }, { status: 422 })
     }
 
-    if (collection?.id) {
+    if (collection?.id && !isChase) {
       const mergedRemark = mergeRemarkImageUrls(collection.remark, savedUrls)
       const { error: updateError } = await supabase
         .from("tbl_collection")
