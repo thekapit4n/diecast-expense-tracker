@@ -27,6 +27,7 @@ class Purchase {
     required this.readyDate,
     required this.collectedDate,
     required this.isChase,
+    required this.editionType,
     required this.createdAt,
   });
 
@@ -45,6 +46,10 @@ class Purchase {
   final String? readyDate;
   final String? collectedDate;
   final bool isChase;
+
+  /// normal / event_car / black_edition / limited_edition (nullable — most
+  /// purchases are plain "normal" and just leave this unset).
+  final String? editionType;
 
   /// Epoch seconds (tbl_purchase.created_at is a BIGINT).
   final int? createdAt;
@@ -72,6 +77,7 @@ class Purchase {
       readyDate: row['ready_date'] as String?,
       collectedDate: row['collected_date'] as String?,
       isChase: row['is_chase'] == true,
+      editionType: row['edition_type'] as String?,
       createdAt: (row['created_at'] as num?)?.toInt(),
     );
   }

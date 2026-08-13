@@ -9,7 +9,11 @@ import '../../data/models/purchase.dart';
 
 /// Everything the catalog screen needs: the built tiles plus the brand list.
 class CatalogData {
-  CatalogData({required this.items, required this.brands, required this.defaultBrand});
+  CatalogData({
+    required this.items,
+    required this.brands,
+    required this.defaultBrand,
+  });
 
   final List<CatalogItem> items;
   final List<String> brands;
@@ -24,7 +28,8 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
   final collectionsF = supabase
       .from('tbl_collection')
       .select(
-          'id, name, item_no, scale, remark, brand_id, tbl_master_brand(name)')
+        'id, name, item_no, scale, remark, brand_id, tbl_master_brand(name)',
+      )
       .order('name', ascending: true);
 
   final brandsF = supabase
@@ -34,16 +39,24 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
       .eq('type', 'Diecast')
       .order('name');
 
-  final purchasesF = supabase.from('tbl_purchase').select(
-      'collection_id, quantity, price_per_unit, total_price, amount_paid, '
-      'is_chase, shop_name, platform, payment_date, payment_status, '
-      'ready_date, collected_date, po_order_id, created_at');
+  final purchasesF = supabase
+      .from('tbl_purchase')
+      .select(
+        'collection_id, quantity, price_per_unit, total_price, amount_paid, '
+        'is_chase, edition_type, shop_name, platform, payment_date, payment_status, '
+        'ready_date, collected_date, po_order_id, created_at',
+      );
 
-  final detailsF =
-      supabase.from('tbl_collection_detail').select('collection_id, is_case, is_chase');
+  final detailsF = supabase
+      .from('tbl_collection_detail')
+      .select('collection_id, is_case, is_chase');
 
-  final results = await Future.wait([collectionsF, brandsF, purchasesF, detailsF])
-      .timeout(requestTimeout);
+  final results = await Future.wait([
+    collectionsF,
+    brandsF,
+    purchasesF,
+    detailsF,
+  ]).timeout(requestTimeout);
   final collectionsRaw = results[0] as List;
   final brandsRaw = results[1] as List;
   final purchasesRaw = results[2] as List;
@@ -87,30 +100,37 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
     final chase = purchases.where((p) => p.isChase).toList();
     final normal = purchases.where((p) => !p.isChase).toList();
 
-    CatalogItem build(String tileId, List<Purchase> ps, bool isChase, bool isCase) =>
-        CatalogItem(
-          id: tileId,
-          name: c['name'] as String,
-          itemNo: c['item_no'] as String?,
-          scale: c['scale'] as String?,
-          remark: c['remark'] as String?,
-          brandName: brandName,
-          brandId: (c['brand_id'] as num?)?.toInt(),
-          isChase: isChase,
-          isCase: isCase,
-          totalQty:
-              ps.where(isOwned).fold(0, (s, p) => s + p.quantity),
-          preOrderQty:
-              ps.where(isPreOrder).fold(0, (s, p) => s + p.quantity),
-          imageSources: catalogImageSources(
-            brandName: brandName,
-            itemNo: c['item_no'] as String?,
-            collectionName: c['name'] as String,
-            remark: c['remark'] as String?,
-            isChase: isChase,
-          ),
-          purchases: ps,
-        );
+    CatalogItem build(
+      String tileId,
+      List<Purchase> ps,
+      bool isChase,
+      bool isCase,
+    ) => CatalogItem(
+      id: tileId,
+      name: c['name'] as String,
+      itemNo: c['item_no'] as String?,
+      scale: c['scale'] as String?,
+      remark: c['remark'] as String?,
+      brandName: brandName,
+      brandId: (c['brand_id'] as num?)?.toInt(),
+      isChase: isChase,
+      isCase: isCase,
+      editionTypes: {
+        for (final p in ps)
+          if (p.editionType != null && p.editionType != 'normal')
+            p.editionType!,
+      },
+      totalQty: ps.where(isOwned).fold(0, (s, p) => s + p.quantity),
+      preOrderQty: ps.where(isPreOrder).fold(0, (s, p) => s + p.quantity),
+      imageSources: catalogImageSources(
+        brandName: brandName,
+        itemNo: c['item_no'] as String?,
+        collectionName: c['name'] as String,
+        remark: c['remark'] as String?,
+        isChase: isChase,
+      ),
+      purchases: ps,
+    );
 
     if (chase.isNotEmpty && normal.isNotEmpty) {
       items.add(build('$id::chase', chase, true, detail?.chaseCase ?? false));
@@ -131,12 +151,12 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
     for (final row in brandsRaw)
       if (brandIdsWithData.contains(((row as Map)['id'] as num).toInt()))
         row['name'] as String,
-  ];
+  ]..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
   final defaultBrand = brands.cast<String?>().firstWhere(
-        (b) => b!.toLowerCase().contains('mini gt'),
-        orElse: () => null,
-      );
+    (b) => b!.toLowerCase().contains('mini gt'),
+    orElse: () => null,
+  );
 
   return CatalogData(items: items, brands: brands, defaultBrand: defaultBrand);
 });
