@@ -140,9 +140,11 @@ export function extractRemarkImageUrls(remark: string | null): string[] {
   )
   if (!matches) return []
 
-  return matches.map((url) =>
-    url.replace(/^\/api\/mini-gt\/image\//, "/api/catalog/image/")
-  )
+  /* Chase photos land in the same shared `remark` text as the normal
+   * variant's URLs — never surface them for the normal tile. */
+  return matches
+    .filter((url) => !/\/chase\//i.test(url))
+    .map((url) => url.replace(/^\/api\/mini-gt\/image\//, "/api/catalog/image/"))
 }
 
 export function getMiniGtSeriesImageUrls(
