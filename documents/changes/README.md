@@ -19,6 +19,7 @@ Use this folder to record project updates day by day in simple English.
 | [2026-07-31](2026-07-31.md) | Added "Facebook Bid" platform option to Add/Edit Purchase forms |
 | [2026-08-07](2026-08-07.md) | Light/Dark/System theme switcher, ScaleVault tab icon, Brand Management add/edit/delete |
 | [2026-08-09](2026-08-09.md) | Pre-order edit now links to tracker, Collection Name field redesigned, sidebar icons switched to HugeIcons |
+| [2026-08-13](2026-08-13.md) | Catalog desktop filter bar replaces unscrollable brand pills, Chase-only filter, chase/normal photo mix-up fixed again |
 
 ## File Naming Rule
 
