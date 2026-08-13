@@ -23,6 +23,7 @@ CatalogItem _item({
   brandId: 1,
   isChase: isChase,
   isCase: false,
+  editionTypes: const {},
   totalQty: owned,
   preOrderQty: preorder,
   imageSources: const [],
