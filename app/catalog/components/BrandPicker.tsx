@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { Check, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { tw } from "@/lib/theme/diecast-theme"
@@ -24,6 +25,16 @@ interface BrandPickerProps {
 
 export default function BrandPicker({ brands, selected, onChange, variant = "chip" }: BrandPickerProps) {
   const active = selected.length > 0
+
+  // Pin selected brands to the top so the user doesn't have to scroll to find
+  // what's already checked, matching the mobile app's picker behavior.
+  const orderedBrands = useMemo(() => {
+    if (selected.length === 0) return brands
+    const selectedSet = new Set(selected)
+    const selectedBrands = brands.filter((b) => selectedSet.has(b.name))
+    const unselectedBrands = brands.filter((b) => !selectedSet.has(b.name))
+    return [...selectedBrands, ...unselectedBrands]
+  }, [brands, selected])
 
   function toggle(name: string) {
     onChange(selected.includes(name) ? selected.filter((b) => b !== name) : [...selected, name])
@@ -59,7 +70,7 @@ export default function BrandPicker({ brands, selected, onChange, variant = "chi
                 <Check className={cn("h-4 w-4", selected.length === 0 ? "opacity-100" : "opacity-0")} />
                 All brands
               </CommandItem>
-              {brands.map((brand) => {
+              {orderedBrands.map((brand) => {
                 const isActive = selected.includes(brand.name)
                 return (
                   <CommandItem key={brand.id} value={brand.name} onSelect={() => toggle(brand.name)}>

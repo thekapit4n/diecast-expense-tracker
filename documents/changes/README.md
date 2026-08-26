@@ -21,6 +21,7 @@ Use this folder to record project updates day by day in simple English.
 | [2026-08-09](2026-08-09.md) | Pre-order edit now links to tracker, Collection Name field redesigned, sidebar icons switched to HugeIcons |
 | [2026-08-13](2026-08-13.md) | Catalog desktop filter bar replaces unscrollable brand pills, Chase-only filter, chase/normal photo mix-up fixed again |
 | [2026-08-14](2026-08-14.md) | Mobile Catalog filter bar redesign, multi-select searchable brand picker, new Chase/Event Car/Edition Type filter |
+| [2026-08-26](2026-08-26.md) | Catalog brand filter pins selected to top, Purchase/Collection List brand & payment filters switched to checkboxes |
 
 ## File Naming Rule
 
