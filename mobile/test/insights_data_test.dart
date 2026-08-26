@@ -32,6 +32,7 @@ Purchase _p({
     readyDate: null,
     collectedDate: collectedDate,
     isChase: isChase,
+    editionType: null,
     createdAt: null,
   );
 }

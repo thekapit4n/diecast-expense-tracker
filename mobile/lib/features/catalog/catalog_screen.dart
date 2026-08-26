@@ -7,8 +7,22 @@ import '../shell/nav_intent.dart';
 import 'catalog_data.dart';
 import 'item_detail_sheet.dart';
 import 'widgets/diecast_card.dart';
+import 'widgets/filter_sheet.dart';
 
-enum _OwnFilter { all, owned, preorder, notOwned }
+enum _OwnFilter { all, owned, preorder }
+
+const _ownOptions = [
+  ('all', 'All'),
+  ('owned', 'Owned'),
+  ('preorder', 'Pre-order'),
+];
+
+const _typeOptions = [
+  ('chase', 'Chase'),
+  ('event_car', 'Event Car'),
+  ('black_edition', 'Black Edition'),
+  ('limited_edition', 'Limited Edition'),
+];
 
 class CatalogScreen extends ConsumerStatefulWidget {
   const CatalogScreen({super.key});
@@ -20,9 +34,10 @@ class CatalogScreen extends ConsumerStatefulWidget {
 class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   final _searchCtrl = TextEditingController();
   String _search = '';
-  String? _brand; // null = All
+  Set<String> _brands = {}; // empty = All
   bool _brandInitialised = false;
   _OwnFilter _own = _OwnFilter.all;
+  Set<String> _types = {};
 
   @override
   void dispose() {
@@ -30,21 +45,32 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     super.dispose();
   }
 
+  bool get _anyFilterActive =>
+      _brands.isNotEmpty || _own != _OwnFilter.all || _types.isNotEmpty;
+
+  void _clearAllFilters() => setState(() {
+        _brands = {};
+        _own = _OwnFilter.all;
+        _types = {};
+      });
+
   List<CatalogItem> _apply(List<CatalogItem> items) {
     final q = _search.trim().toLowerCase();
     final terms = q.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
 
     return items.where((it) {
-      if (_brand != null && it.brandName != _brand) return false;
+      if (_brands.isNotEmpty && !_brands.contains(it.brandName)) return false;
       switch (_own) {
         case _OwnFilter.owned:
           if (!it.isOwnedTile) return false;
         case _OwnFilter.preorder:
           if (!it.isPreOrderTile) return false;
-        case _OwnFilter.notOwned:
-          if (it.isOwnedTile || it.isPreOrderTile) return false;
         case _OwnFilter.all:
           break;
+      }
+      if (_types.isNotEmpty) {
+        final itemTypes = {if (it.isChase) 'chase', ...it.editionTypes};
+        if (_types.intersection(itemTypes).isEmpty) return false;
       }
       if (terms.isNotEmpty && q.length >= 2) {
         final hay = '${it.name} ${it.itemNo ?? ''}'.toLowerCase();
@@ -74,18 +100,22 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
           onRetry: () => ref.invalidate(catalogProvider),
         ),
         data: (data) {
-          // Default to Mini GT tab the first time, like the web.
+          // Default to Mini GT the first time, like the web.
           if (!_brandInitialised) {
-            _brand = data.defaultBrand;
+            if (data.defaultBrand != null) _brands = {data.defaultBrand!};
             _brandInitialised = true;
           }
           final filtered = _apply(data.items);
+          final availableTypes = _typeOptions
+              .where((t) => t.$1 == 'chase'
+                  ? data.items.any((i) => i.isChase)
+                  : data.items.any((i) => i.editionTypes.contains(t.$1)))
+              .toList();
 
           return Column(
             children: [
               _searchBar(),
-              _brandChips(data.brands),
-              _ownChips(),
+              _filterBar(data.brands, availableTypes),
               const Divider(height: 1),
               Expanded(
                 child: RefreshIndicator(
@@ -144,43 +174,116 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         ),
       );
 
-  Widget _brandChips(List<String> brands) => SizedBox(
-        height: 44,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+  Widget _filterBar(List<String> brands, List<(String, String)> availableTypes) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+        child: Row(
           children: [
-            _filterChip('All', _brand == null, () => setState(() => _brand = null)),
-            for (final b in brands)
-              _filterChip(b, _brand == b, () => setState(() => _brand = b)),
+            Expanded(
+              child: _filterButton(
+                label: _brands.isEmpty
+                    ? 'Brand'
+                    : _brands.length == 1
+                        ? _brands.first
+                        : 'Brand (${_brands.length})',
+                active: _brands.isNotEmpty,
+                onTap: () => _openBrandSheet(brands),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _filterButton(
+                label: _own == _OwnFilter.all
+                    ? 'Status'
+                    : _ownOptions.firstWhere((o) => o.$1 == _ownValue(_own)).$2,
+                active: _own != _OwnFilter.all,
+                onTap: _openStatusSheet,
+              ),
+            ),
+            if (availableTypes.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Expanded(
+                child: _filterButton(
+                  label: _types.isEmpty ? 'Type' : 'Type (${_types.length})',
+                  active: _types.isNotEmpty,
+                  onTap: () => _openTypeSheet(availableTypes),
+                ),
+              ),
+            ],
+            if (_anyFilterActive)
+              IconButton(
+                tooltip: 'Clear all filters',
+                icon: const Icon(Icons.filter_alt_off_outlined),
+                onPressed: _clearAllFilters,
+              ),
           ],
         ),
       );
 
-  Widget _ownChips() => SizedBox(
-        height: 44,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          children: [
-            _filterChip('All', _own == _OwnFilter.all,
-                () => setState(() => _own = _OwnFilter.all)),
-            _filterChip('Owned', _own == _OwnFilter.owned,
-                () => setState(() => _own = _OwnFilter.owned)),
-            _filterChip('Pre-order', _own == _OwnFilter.preorder,
-                () => setState(() => _own = _OwnFilter.preorder)),
-            _filterChip('Not owned', _own == _OwnFilter.notOwned,
-                () => setState(() => _own = _OwnFilter.notOwned)),
-          ],
+  Widget _filterButton({
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: active ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+        side: BorderSide(
+          color: active ? theme.colorScheme.primary : theme.colorScheme.outlineVariant,
         ),
-      );
+        backgroundColor: active ? theme.colorScheme.primary.withValues(alpha: 0.08) : null,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+      ),
+      icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+      label: Text(label, overflow: TextOverflow.ellipsis),
+    );
+  }
 
-  Widget _filterChip(String label, bool selected, VoidCallback onTap) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ChoiceChip(
-          label: Text(label),
-          selected: selected,
-          onSelected: (_) => onTap(),
-        ),
-      );
+  String _ownValue(_OwnFilter f) => switch (f) {
+        _OwnFilter.all => 'all',
+        _OwnFilter.owned => 'owned',
+        _OwnFilter.preorder => 'preorder',
+      };
+
+  _OwnFilter _ownFromValue(String v) => switch (v) {
+        'owned' => _OwnFilter.owned,
+        'preorder' => _OwnFilter.preorder,
+        _ => _OwnFilter.all,
+      };
+
+  Future<void> _openBrandSheet(List<String> brands) async {
+    final result = await showFilterSheet(
+      context,
+      title: 'Brand',
+      options: [for (final b in brands) (b, b)],
+      initial: _brands,
+      multi: true,
+    );
+    if (result != null) setState(() => _brands = result);
+  }
+
+  Future<void> _openStatusSheet() async {
+    final result = await showFilterSheet(
+      context,
+      title: 'Status',
+      options: _ownOptions,
+      initial: {_ownValue(_own)},
+      multi: false,
+    );
+    if (result != null) {
+      setState(() => _own = _ownFromValue(result.isEmpty ? 'all' : result.first));
+    }
+  }
+
+  Future<void> _openTypeSheet(List<(String, String)> availableTypes) async {
+    final result = await showFilterSheet(
+      context,
+      title: 'Type',
+      options: availableTypes,
+      initial: _types,
+      multi: true,
+    );
+    if (result != null) setState(() => _types = result);
+  }
 }
