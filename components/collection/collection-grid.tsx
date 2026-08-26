@@ -202,12 +202,10 @@ export function CollectionGrid() {
         field: "brand_name",
         headerName: "Brand",
         sortable: true,
-        filter: 'agTextColumnFilter',
+        filter: 'agSetColumnFilter',
         flex: 1.5,
         minWidth: 150,
         filterParams: {
-          filterOptions: ['contains', 'equals', 'startsWith'],
-          defaultOption: 'contains',
           buttons: ['reset', 'apply'],
           closeOnApply: true,
         },
