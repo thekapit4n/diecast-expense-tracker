@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/error_view.dart';
 import '../../core/format.dart';
 import '../../theme/app_theme.dart';
+import '../collection_changes/collection_changes_screen.dart';
 import 'insights_data.dart';
 
 /// How long bars grow/shrink and money values count up, on first load and on
@@ -77,7 +78,39 @@ class _InsightsView extends StatelessWidget {
         _SectionTitle('Collection'),
         const SizedBox(height: 8),
         _Facts(data: data),
+        const SizedBox(height: 24),
+
+        /* Cars that have left are the other side of the collection numbers
+           above, so this is where you'd go looking for them. */
+        _SectionTitle('Cars that left'),
+        const SizedBox(height: 8),
+        const _CollectionChangesTile(),
       ],
+    );
+  }
+}
+
+class _CollectionChangesTile extends StatelessWidget {
+  const _CollectionChangesTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: ListTile(
+        leading: Icon(Icons.output, color: theme.colorScheme.primary),
+        title: const Text('Collection changes'),
+        subtitle: const Text('Gifted, sold, traded, lost or damaged'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const CollectionChangesScreen(),
+          ),
+        ),
+      ),
     );
   }
 }
