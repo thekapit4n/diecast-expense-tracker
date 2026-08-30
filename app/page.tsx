@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import dynamic from "next/dynamic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DollarSign, Package, TrendingUp, Calendar, Loader2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,6 +11,16 @@ import { DateTime } from "luxon"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { tw } from "@/lib/theme/diecast-theme"
+import type { SortedBarDatum } from "@/components/charts/sorted-bar-chart"
+
+/* amCharts touches the DOM at construction, so it never renders on the server. */
+const SortedBarChart = dynamic(
+  () => import("@/components/charts/sorted-bar-chart").then((m) => m.SortedBarChart),
+  {
+    ssr: false,
+    loading: () => <div className="h-[300px] w-full animate-pulse rounded-lg bg-muted" />,
+  }
+)
 
 interface StatData {
   title: string
@@ -185,8 +196,23 @@ export default function DashboardPage() {
 
         if (error) throw error
 
-        const totalQty = data?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
-        
+        const purchasedQty = data?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+
+        /* Cars that left the collection — gifted, sold or lost — are no longer
+         * items on the shelf, even though the money spent on them stays in
+         * "Total Spent". Returned COD parcels came back, so they don't count. */
+        const { data: disposalData, error: disposalError } = await supabase
+          .from("tbl_disposal")
+          .select("quantity, status")
+          .eq("status", "active")
+
+        if (disposalError) throw disposalError
+
+        const disposedQty =
+          disposalData?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+
+        const totalQty = Math.max(purchasedQty - disposedQty, 0)
+
         // Get this month's items for trend
         const currentMonth = new Date().getMonth()
         const currentYear = new Date().getFullYear()
@@ -411,6 +437,37 @@ export default function DashboardPage() {
     fetchTopBrands()
   }, [supabase, refreshKey])
 
+  /* topBrands already arrives sorted by spend; the chart sorts again anyway so
+   * the ordering is guaranteed by the component rather than by its caller. */
+  const brandChartData: SortedBarDatum[] = useMemo(
+    () => topBrands.map((b) => ({ label: b.brand_name, value: b.total_spent })),
+    [topBrands]
+  )
+
+  const brandShareByName = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const b of topBrands) map.set(b.brand_name, b.percentage)
+    return map
+  }, [topBrands])
+
+  /* Stable identities — the chart rebuilds whenever these change. */
+  const formatRinggit = useCallback(
+    (value: number) =>
+      `RM ${value.toLocaleString("en-MY", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`,
+    []
+  )
+
+  const formatBrandShare = useCallback(
+    (d: SortedBarDatum) => {
+      const share = brandShareByName.get(d.label)
+      return share == null ? null : `${share.toFixed(1)}% of spend`
+    },
+    [brandShareByName]
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -471,7 +528,48 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* Spending by Brand gets the full width: the bar chart needs the room
+          for long brand names, and it reads as the headline of the page.
+          Recent Purchases sits below it. */}
+      <div className="grid gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className={tw.textTitle}>Spending by Brand</CardTitle>
+            <CardDescription>
+              Total expenses tracked by brand, biggest first
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingTopBrands ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 bg-muted animate-pulse rounded w-24"></div>
+                      <div className="h-2 bg-muted animate-pulse rounded w-32"></div>
+                    </div>
+                    <div className="h-4 bg-muted animate-pulse rounded w-16"></div>
+                  </div>
+                ))}
+              </div>
+            ) : topBrands.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">No brand data yet</p>
+              </div>
+            ) : (
+              /* The chart sizes itself to the brand count, so with many brands
+               * this container scrolls rather than the bars being squashed. */
+              <div className={cn("max-h-[520px] overflow-y-auto pr-2", tw.scrollbarDark)}>
+                <SortedBarChart
+                  data={brandChartData}
+                  formatValue={formatRinggit}
+                  formatSubLabel={formatBrandShare}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className={tw.textTitle}>Recent Purchases</CardTitle>
@@ -523,55 +621,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className={tw.textTitle}>Spending by Brand</CardTitle>
-            <CardDescription>
-              Total expenses tracked by brand
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingTopBrands ? (
-              <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-muted animate-pulse rounded w-24"></div>
-                      <div className="h-2 bg-muted animate-pulse rounded w-32"></div>
-                    </div>
-                    <div className="h-4 bg-muted animate-pulse rounded w-16"></div>
-                  </div>
-                ))}
-              </div>
-            ) : topBrands.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="text-sm">No brand data yet</p>
-              </div>
-            ) : (
-              <div className={cn("space-y-4 max-h-[400px] overflow-y-auto pr-2", tw.scrollbarDark)}>
-                {topBrands.map((brand) => (
-                  <div key={brand.brand_id} className="flex items-center justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className={cn("text-sm font-medium truncate", tw.textTitle)}>{brand.brand_name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className={cn("flex-1", tw.progressTrack)}>
-                          <div
-                            className="bg-primary h-2 rounded-full transition-all"
-                            style={{ width: `${Math.min(brand.percentage, 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground min-w-[40px] text-right">
-                          {brand.percentage.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                    <p className={cn("text-sm font-semibold whitespace-nowrap", tw.textTitle)}>RM {brand.total_spent.toFixed(2)}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

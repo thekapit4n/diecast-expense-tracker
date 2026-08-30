@@ -1,7 +1,8 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { buildCatalogItemImageUrls } from "@/lib/collection-images"
-import { isOwnedPurchase, isPreOrderPurchase } from "@/lib/catalog-ownership"
-import type { CatalogItem, CatalogBrand, PurchaseRecord } from "@/lib/catalog-types"
+import { isPreOrderPurchase, ownedQuantity } from "@/lib/catalog-ownership"
+import { disposedUnits } from "@/lib/disposal"
+import type { CatalogItem, CatalogBrand, PurchaseRecord, CatalogDisposal } from "@/lib/catalog-types"
 import CatalogClient from "./components/CatalogClient"
 
 /* -------------------------------------------------------------------------
@@ -22,6 +23,7 @@ export default async function CatalogPage({
     { data: brandsRaw },
     { data: purchasesRaw },
     { data: detailsRaw },
+    { data: disposalsRaw },
   ] = await Promise.all([
     supabase
       .from("tbl_collection")
@@ -38,16 +40,57 @@ export default async function CatalogPage({
     supabase
       .from("tbl_purchase")
       .select(
-        "collection_id, quantity, price_per_unit, total_price, is_chase, shop_name, platform, payment_date, payment_status, collected_date, po_order_id"
+        "id, collection_id, quantity, price_per_unit, total_price, is_chase, shop_name, platform, payment_date, payment_status, collected_date, po_order_id"
       ),
 
     supabase
       .from("tbl_collection_detail")
       .select("collection_id, is_case, is_chase"),
+
+    supabase
+      .from("tbl_disposal")
+      .select(
+        "purchase_id, quantity, status, reason, handover, disposal_date, counterparty, gross_amount, remark"
+      )
+      .order("disposal_date", { ascending: false }),
   ])
+
+  /* ---- Units that have left, per purchase ----
+   * Every reason counts towards the owned total — a car given away is as gone
+   * as one sold. The full record is kept so the card can show where it went. */
+  const disposedByPurchase = new Map<string, { qty: number; records: CatalogDisposal[] }>()
+
+  for (const d of (disposalsRaw ?? []) as {
+    purchase_id: string | null
+    quantity: number | null
+    status: string | null
+    reason: string | null
+    handover: string | null
+    disposal_date: string | null
+    counterparty: string | null
+    gross_amount: number | null
+    remark: string | null
+  }[]) {
+    if (!d.purchase_id) continue
+    const units = disposedUnits({ quantity: Number(d.quantity ?? 0), status: d.status })
+    if (units === 0) continue
+    const entry = disposedByPurchase.get(d.purchase_id) ?? { qty: 0, records: [] }
+    entry.qty += units
+    entry.records.push({
+      quantity: units,
+      reason: d.reason ?? "sold",
+      handover: d.handover ?? null,
+      disposalDate: d.disposal_date ?? null,
+      counterparty: d.counterparty ?? null,
+      grossAmount: d.gross_amount != null ? Number(d.gross_amount) : null,
+      remark: d.remark ?? null,
+    })
+    disposedByPurchase.set(d.purchase_id, entry)
+  }
 
   /* ---- Group individual purchase records per collection_id ---- */
   type PurchaseRow = {
+    id: string
     collection_id: string | null
     quantity: number | null
     price_per_unit: number | null
@@ -66,6 +109,7 @@ export default async function CatalogPage({
   for (const p of (purchasesRaw ?? []) as PurchaseRow[]) {
     if (!p.collection_id) continue
     const record: PurchaseRecord = {
+      id: p.id,
       quantity: Number(p.quantity ?? 1),
       pricePerUnit: p.price_per_unit != null ? Number(p.price_per_unit) : null,
       totalPrice: p.total_price != null ? Number(p.total_price) : null,
@@ -76,6 +120,8 @@ export default async function CatalogPage({
       paymentStatus: p.payment_status ?? null,
       collectedDate: p.collected_date ?? null,
       poOrderId: p.po_order_id ?? null,
+      disposedQty: disposedByPurchase.get(p.id)?.qty ?? 0,
+      disposals: disposedByPurchase.get(p.id)?.records ?? [],
     }
     const list = purchaseMap.get(p.collection_id)
     if (list) {
@@ -148,7 +194,7 @@ export default async function CatalogPage({
       }),
       imageVersion,
       purchases: itemPurchases,
-      totalQty: itemPurchases.reduce((sum, p) => sum + (isOwnedPurchase(p) ? p.quantity : 0), 0),
+      totalQty: itemPurchases.reduce((sum, p) => sum + ownedQuantity(p), 0),
       preOrderQty: itemPurchases.reduce((sum, p) => sum + (isPreOrderPurchase(p) ? p.quantity : 0), 0),
       isChase,
       isCase,
