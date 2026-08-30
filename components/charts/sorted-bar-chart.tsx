@@ -141,7 +141,7 @@ export function SortedBarChart({
     })
 
     const axisTooltip = am5.Tooltip.new(root, { themeTags: ["axis"] })
-    axisTooltip.label.setAll({ fontSize: 12 })
+    axisTooltip.label.setAll({ fontSize: 10 })
 
     const yAxis = chart.yAxes.push(
       am5xy.CategoryAxis.new(root, {
@@ -177,7 +177,7 @@ export function SortedBarChart({
       pointerOrientation: "left",
       labelText: "{tooltip}",
     })
-    seriesTooltip.label.setAll({ fontSize: 12 })
+    seriesTooltip.label.setAll({ fontSize: 10 })
 
     const series = chart.series.push(
       am5xy.ColumnSeries.new(root, {
