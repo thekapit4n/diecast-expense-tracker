@@ -313,12 +313,10 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
       field: "brand_name",
       headerName: "Brand",
       sortable: true,
-      filter: 'agTextColumnFilter',
+      filter: 'agSetColumnFilter',
       flex: 1,
       minWidth: 150,
       filterParams: {
-        filterOptions: ['contains', 'equals', 'startsWith'],
-        defaultOption: 'contains',
         buttons: ['reset', 'apply'],
         closeOnApply: true,
       },
@@ -446,7 +444,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
       field: "payment_status",
       headerName: "Payment Status",
       sortable: true,
-      filter: 'agTextColumnFilter',
+      filter: 'agSetColumnFilter',
       width: 140,
       cellRenderer: (params: ICellRendererParams<PurchaseItem>) => {
         if (!params.data) return null
@@ -456,8 +454,6 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         return params.data?.payment_status || ""
       },
       filterParams: {
-        filterOptions: ['equals', 'notEqual'],
-        defaultOption: 'equals',
         buttons: ['reset', 'apply'],
         closeOnApply: true,
       },

@@ -13,6 +13,7 @@ class CatalogItem {
     required this.brandId,
     required this.isChase,
     required this.isCase,
+    required this.editionTypes,
     required this.totalQty,
     required this.preOrderQty,
     required this.imageSources,
@@ -28,6 +29,11 @@ class CatalogItem {
   final int? brandId;
   final bool isChase;
   final bool isCase;
+
+  /// Non-"normal" edition types across this tile's purchases, e.g.
+  /// `event_car`, `black_edition`, `limited_edition`. Chase is tracked
+  /// separately via [isChase], not folded in here.
+  final Set<String> editionTypes;
 
   /// Owned units (paid + collected where applicable).
   final int totalQty;
