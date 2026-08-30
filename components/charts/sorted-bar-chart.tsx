@@ -33,18 +33,23 @@ interface ChartRow {
   tooltip: string
 }
 
-/** Horizontal bars, biggest at the top.
+/** Horizontal bars, biggest at the top, animating into rank order.
  *
- *  Sorted descending because the reader's question is "which is biggest" — a
- *  chart in arbitrary category order makes that a hunt. One hue stepped by
- *  rank keeps it a magnitude comparison; a colour per bar would imply the
- *  categories are series being tracked against each other, which they aren't.
+ *  Follows amCharts' own sorted-bar demo: the data keeps its arrival order and
+ *  each axis item is *shifted* into its ranked position via `deltaPosition`,
+ *  which is then animated back to zero. The row order changes instantly while
+ *  the bars glide, so they slide past each other instead of jumping.
  *
- *  The sort is done the way amCharts' own sorted-bar demo does it: the data
- *  keeps whatever order it arrived in, and each axis item is *shifted* into
- *  its ranked position via `deltaPosition`, animating as it goes. That means
- *  the bars visibly settle into order on load, and re-order rather than jump
- *  when the numbers change under a refresh.
+ *  Two things follow the demo exactly rather than being reasoned from scratch,
+ *  because they are what makes the animation land correctly:
+ *  `maxDeviation: 0` on both axes (otherwise the axis over-scrolls mid-slide),
+ *  and the ascending value sort against a normal — not inversed — axis, which
+ *  puts the largest bar at the top.
+ *
+ *  Colour is the one deliberate departure. The demo gives every bar its own
+ *  hue; here it is a single hue stepped by rank, because these bars are one
+ *  quantity measured across categories, not separate series to tell apart —
+ *  and per-bar hues stop being distinguishable past about seven brands.
  */
 export function SortedBarChart({
   data,
@@ -68,17 +73,16 @@ export function SortedBarChart({
           value: d.value,
           display: formatValue(d.value),
           tooltip: sub
-            ? `${d.label}: ${formatValue(d.value)}\n${sub}`
-            : `${d.label}: ${formatValue(d.value)}`,
+            ? `[bold]${d.label}[/]\n${formatValue(d.value)} · ${sub}`
+            : `[bold]${d.label}[/]\n${formatValue(d.value)}`,
         }
       }),
     [data, formatValue, formatSubLabel]
   )
 
   /* Rank lookup for the colour ramp. Mirrored into a ref so the fill adapter,
-   * registered once when the chart is built, reads current ranks instead of
-   * closing over the first render's data. The ref is seeded with the initial
-   * value so the very first paint is already correct. */
+   * registered once when the chart is built, reads current ranks rather than
+   * closing over the first render's data. Seeded so the first paint is right. */
   const rankMap = useMemo(() => {
     const map = new Map<string, number>()
     ;[...data]
@@ -101,8 +105,8 @@ export function SortedBarChart({
   const resolvedHeight =
     height ?? Math.max(minHeight, rows.length * rowHeight + 48)
 
-  /* Build once per theme. A theme flip rebuilds rather than restyling every
-   * template in place — it is rare and a rebuild is far less to get wrong. */
+  /* Built once per theme. A theme flip rebuilds rather than restyling every
+   * template in place — it is rare, and a rebuild is far less to get wrong. */
   useEffect(() => {
     if (!ref.current) return
 
@@ -118,17 +122,15 @@ export function SortedBarChart({
         wheelX: "none",
         wheelY: "none",
         paddingLeft: 0,
-        paddingRight: 24,
         paddingTop: 8,
       })
     )
 
-    /* inversed: a Y category axis draws its first item at the BOTTOM by
-     * default, which would put the top-ranked bar at the bottom. */
-    const yRenderer = am5xy.AxisRendererY.new(root, {
-      minGridDistance: 16,
-      inversed: true,
-    })
+    /* The zoom-out button pops in while rows are sliding; hide it. */
+    chart.zoomOutButton.set("forceHidden", true)
+
+    const yRenderer = am5xy.AxisRendererY.new(root, { minGridDistance: 16 })
+    yRenderer.grid.template.set("location", 1)
     yRenderer.grid.template.set("visible", false)
     yRenderer.labels.template.setAll({
       fontSize: 12,
@@ -141,12 +143,17 @@ export function SortedBarChart({
 
     const yAxis = chart.yAxes.push(
       am5xy.CategoryAxis.new(root, {
+        maxDeviation: 0,
         categoryField: "label",
         renderer: yRenderer,
+        tooltip: am5.Tooltip.new(root, { themeTags: ["axis"] }),
       })
     )
 
-    const xRenderer = am5xy.AxisRendererX.new(root, { strokeOpacity: 0 })
+    const xRenderer = am5xy.AxisRendererX.new(root, {
+      strokeOpacity: 0,
+      minGridDistance: 80,
+    })
     xRenderer.grid.template.setAll({
       stroke: am5.color(palette.grid),
       strokeOpacity: 1,
@@ -155,7 +162,10 @@ export function SortedBarChart({
 
     const xAxis = chart.xAxes.push(
       am5xy.ValueAxis.new(root, {
+        maxDeviation: 0,
         min: 0,
+        /* Headroom at the right so the end labels are not clipped. */
+        extraMax: 0.12,
         renderer: xRenderer,
         ...(integerAxis ? { maxPrecision: 0 } : {}),
       })
@@ -167,7 +177,10 @@ export function SortedBarChart({
         yAxis,
         valueXField: "value",
         categoryYField: "label",
-        tooltip: am5.Tooltip.new(root, { labelText: "{tooltip}" }),
+        tooltip: am5.Tooltip.new(root, {
+          pointerOrientation: "left",
+          labelText: "{tooltip}",
+        }),
       })
     )
 
@@ -176,12 +189,8 @@ export function SortedBarChart({
       cornerRadiusTR: 4,
       cornerRadiusBR: 4,
       strokeOpacity: 0,
-      /* Hovering anywhere along the row hits the bar, not just the filled
-       * part, so short bars are no harder to hover than long ones. */
-      tooltipX: am5.percent(100),
     })
 
-    /* Lift the hovered bar so it reads as the one being described. */
     series.columns.template.states.create("hover", { fillOpacity: 0.75 })
 
     series.columns.template.adapters.add("fill", (fill, target) => {
@@ -206,6 +215,13 @@ export function SortedBarChart({
       })
     )
 
+    /* behavior "none": the cursor is there to drive the hover tooltip, not to
+     * select or zoom a range. */
+    chart.set(
+      "cursor",
+      am5xy.XYCursor.new(root, { behavior: "none", xAxis, yAxis })
+    )
+
     seriesRef.current = series
     yAxisRef.current = yAxis
 
@@ -216,7 +232,7 @@ export function SortedBarChart({
     }
   }, [palette, integerAxis])
 
-  /* Feed data in its arrival order, then animate each row into rank order. */
+  /* Feed data in arrival order, then slide each row into rank order. */
   useEffect(() => {
     const series = seriesRef.current
     const yAxis = yAxisRef.current
@@ -225,39 +241,32 @@ export function SortedBarChart({
     yAxis.data.setAll(rows)
     series.data.setAll(rows)
 
-    const sortAxis = () => {
-      const items = [...series.dataItems].sort(
-        (a, b) => (b.get("valueX") ?? 0) - (a.get("valueX") ?? 0)
-      )
+    /* Ascending against a normal axis: the first item sits at the bottom, so
+     * the smallest lands at the bottom and the largest at the top. */
+    series.dataItems.sort((x, y) => (x.get("valueX") ?? 0) - (y.get("valueX") ?? 0))
 
-      yAxis.dataItems.forEach((axisItem) => {
-        const category = axisItem.get("category")
-        const match = items.find((s) => s.get("categoryY") === category)
-        if (!match) return
+    yAxis.dataItems.forEach((axisItem) => {
+      const category = axisItem.get("category")
+      const seriesItem = series.dataItems.find((s) => s.get("categoryY") === category)
+      if (!seriesItem) return
 
-        const index = items.indexOf(match)
-        /* How far this row has to travel, as a fraction of the axis. Setting
-         * the offset and animating it back to zero moves the row from where
-         * it was drawn to where its rank says it belongs. */
-        const delta = (index - (axisItem.get("index") ?? 0)) / items.length
-        axisItem.set("index", index)
-        axisItem.set("deltaPosition", -delta)
-        axisItem.animate({
-          key: "deltaPosition",
-          to: 0,
-          duration: 700,
-          easing: am5.ease.out(am5.ease.cubic),
-        })
+      const index = series.dataItems.indexOf(seriesItem)
+      const delta = (index - (axisItem.get("index") ?? 0)) / series.dataItems.length
+      axisItem.set("index", index)
+      /* Offset it instantly, then animate the offset away: the row order
+       * changes at once while the bar glides to its new place. */
+      axisItem.set("deltaPosition", -delta)
+      axisItem.animate({
+        key: "deltaPosition",
+        to: 0,
+        duration: 1000,
+        easing: am5.ease.out(am5.ease.cubic),
       })
+    })
 
-      yAxis.dataItems.sort((a, b) => (a.get("index") ?? 0) - (b.get("index") ?? 0))
-    }
+    yAxis.dataItems.sort((x, y) => (x.get("index") ?? 0) - (y.get("index") ?? 0))
 
-    /* One frame after the data lands, so the axis has built its items. */
-    const raf = requestAnimationFrame(sortAxis)
-    series.appear(700)
-
-    return () => cancelAnimationFrame(raf)
+    series.appear(1000)
   }, [rows])
 
   if (rows.length === 0) return null
