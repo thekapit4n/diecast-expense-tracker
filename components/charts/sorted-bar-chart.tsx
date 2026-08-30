@@ -77,7 +77,13 @@ export function SortedBarChart({
       })
     )
 
-    const yRenderer = am5xy.AxisRendererY.new(root, { minGridDistance: 16 })
+    /* inversed: a Y category axis draws its first data item at the BOTTOM by
+     * default, which would put the biggest bar at the bottom of a descending
+     * sort — the opposite of the point. This flips it so biggest is on top. */
+    const yRenderer = am5xy.AxisRendererY.new(root, {
+      minGridDistance: 16,
+      inversed: true,
+    })
     yRenderer.grid.template.set("visible", false)
     yRenderer.labels.template.setAll({
       fontSize: 12,

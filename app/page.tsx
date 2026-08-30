@@ -528,7 +528,48 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* Spending by Brand gets the full width: the bar chart needs the room
+          for long brand names, and it reads as the headline of the page.
+          Recent Purchases sits below it. */}
+      <div className="grid gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className={tw.textTitle}>Spending by Brand</CardTitle>
+            <CardDescription>
+              Total expenses tracked by brand, biggest first
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingTopBrands ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 bg-muted animate-pulse rounded w-24"></div>
+                      <div className="h-2 bg-muted animate-pulse rounded w-32"></div>
+                    </div>
+                    <div className="h-4 bg-muted animate-pulse rounded w-16"></div>
+                  </div>
+                ))}
+              </div>
+            ) : topBrands.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">No brand data yet</p>
+              </div>
+            ) : (
+              /* The chart sizes itself to the brand count, so with many brands
+               * this container scrolls rather than the bars being squashed. */
+              <div className={cn("max-h-[520px] overflow-y-auto pr-2", tw.scrollbarDark)}>
+                <SortedBarChart
+                  data={brandChartData}
+                  formatValue={formatRinggit}
+                  formatSubLabel={formatBrandShare}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className={tw.textTitle}>Recent Purchases</CardTitle>
@@ -580,43 +621,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className={tw.textTitle}>Spending by Brand</CardTitle>
-            <CardDescription>
-              Total expenses tracked by brand
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingTopBrands ? (
-              <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-muted animate-pulse rounded w-24"></div>
-                      <div className="h-2 bg-muted animate-pulse rounded w-32"></div>
-                    </div>
-                    <div className="h-4 bg-muted animate-pulse rounded w-16"></div>
-                  </div>
-                ))}
-              </div>
-            ) : topBrands.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="text-sm">No brand data yet</p>
-              </div>
-            ) : (
-              /* The chart sizes itself to the brand count, so with many brands
-               * this container scrolls rather than the bars being squashed. */
-              <div className={cn("max-h-[400px] overflow-y-auto pr-2", tw.scrollbarDark)}>
-                <SortedBarChart
-                  data={brandChartData}
-                  formatValue={formatRinggit}
-                  formatSubLabel={formatBrandShare}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   )
