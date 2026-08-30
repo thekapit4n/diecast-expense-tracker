@@ -14,7 +14,8 @@ export interface SortedBarDatum {
 
 interface SortedBarChartProps {
   data: SortedBarDatum[]
-  /** How a value reads on the bar's end label and in the tooltip. */
+  /** How a value reads in the hover tooltip. Values are hover-only — printing
+   *  them on every bar competed with the bars themselves for attention. */
   formatValue: (value: number) => string
   /** Optional extra detail in the tooltip, e.g. a share of the total. */
   formatSubLabel?: (datum: SortedBarDatum) => string | null
@@ -29,7 +30,6 @@ interface SortedBarChartProps {
 interface ChartRow {
   label: string
   value: number
-  display: string
   tooltip: string
 }
 
@@ -71,7 +71,6 @@ export function SortedBarChart({
         return {
           label: d.label,
           value: d.value,
-          display: formatValue(d.value),
           tooltip: sub
             ? `[bold]${d.label}[/]\n${formatValue(d.value)} · ${sub}`
             : `[bold]${d.label}[/]\n${formatValue(d.value)}`,
@@ -141,12 +140,15 @@ export function SortedBarChart({
       oversizedBehavior: "truncate",
     })
 
+    const axisTooltip = am5.Tooltip.new(root, { themeTags: ["axis"] })
+    axisTooltip.label.setAll({ fontSize: 12 })
+
     const yAxis = chart.yAxes.push(
       am5xy.CategoryAxis.new(root, {
         maxDeviation: 0,
         categoryField: "label",
         renderer: yRenderer,
-        tooltip: am5.Tooltip.new(root, { themeTags: ["axis"] }),
+        tooltip: axisTooltip,
       })
     )
 
@@ -164,12 +166,18 @@ export function SortedBarChart({
       am5xy.ValueAxis.new(root, {
         maxDeviation: 0,
         min: 0,
-        /* Headroom at the right so the end labels are not clipped. */
-        extraMax: 0.12,
+        /* A little headroom so the longest bar does not run into the edge. */
+        extraMax: 0.05,
         renderer: xRenderer,
         ...(integerAxis ? { maxPrecision: 0 } : {}),
       })
     )
+
+    const seriesTooltip = am5.Tooltip.new(root, {
+      pointerOrientation: "left",
+      labelText: "{tooltip}",
+    })
+    seriesTooltip.label.setAll({ fontSize: 12 })
 
     const series = chart.series.push(
       am5xy.ColumnSeries.new(root, {
@@ -177,10 +185,7 @@ export function SortedBarChart({
         yAxis,
         valueXField: "value",
         categoryYField: "label",
-        tooltip: am5.Tooltip.new(root, {
-          pointerOrientation: "left",
-          labelText: "{tooltip}",
-        }),
+        tooltip: seriesTooltip,
       })
     )
 
@@ -199,21 +204,6 @@ export function SortedBarChart({
       const rank = item ? rankRef.current.get(item.label) ?? 0 : 0
       return am5.color(ramp[Math.min(rank, ramp.length - 1)])
     })
-
-    series.bullets.push(() =>
-      am5.Bullet.new(root, {
-        locationX: 1,
-        sprite: am5.Label.new(root, {
-          text: "{display}",
-          centerY: am5.p50,
-          centerX: am5.p0,
-          paddingLeft: 8,
-          fontSize: 12,
-          fill: am5.color(palette.text),
-          populateText: true,
-        }),
-      })
-    )
 
     /* behavior "none": the cursor is there to drive the hover tooltip, not to
      * select or zoom a range. */
