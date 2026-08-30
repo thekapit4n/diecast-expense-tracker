@@ -171,20 +171,57 @@ class _PurchaseRow extends StatelessWidget {
       if (purchase.paymentStatus != null) purchase.paymentStatus,
     ].whereType<String>().join(' · ');
 
+    final gone = purchase.disposals.where((d) => d.isActive).toList();
+
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 8),
       color: theme.colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${purchase.quantity} × ${formatMoney(purchase.pricePerUnit)}',
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                            '${purchase.quantity} × ${formatMoney(purchase.pricePerUnit)}',
+                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                      ),
+                      // Without this the row reads as a purchase you still own
+                      // while the Owned box above says 0 — which looks like a
+                      // bug rather than a car you gave away.
+                      if (gone.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.outline
+                                .withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            gone.length == 1 &&
+                                    gone.first.quantity >= purchase.quantity
+                                ? gone.first.label
+                                : '${gone.fold(0, (s, d) => s + d.quantity)} OF ${purchase.quantity} GONE',
+                            style: TextStyle(
+                                fontSize: 10,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                   if (where.isNotEmpty)
                     Text(where,
                         style: theme.textTheme.bodySmall
@@ -214,8 +251,54 @@ class _PurchaseRow extends StatelessWidget {
             ),
           ],
         ),
+            // Where it went: reason, who got it, when — and what a sale made.
+            for (final d in gone) ...[
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.output,
+                      size: 14, color: theme.colorScheme.outline),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          [
+                            _reasonWord(d.reason),
+                            d.counterparty,
+                            if (d.reason == 'sold' && d.grossAmount != null)
+                              formatMoney(d.grossAmount),
+                            formatIsoDate(d.disposalDate),
+                            if (purchase.quantity > 1) '×${d.quantity}',
+                          ].whereType<String>().join(' · '),
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: theme.colorScheme.outline),
+                        ),
+                        if (d.remark != null && d.remark!.isNotEmpty)
+                          Text(d.remark!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.outline,
+                                  fontStyle: FontStyle.italic)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
+  static String _reasonWord(String reason) => switch (reason) {
+        'sold' => 'Sold',
+        'gift' => 'Gift',
+        'trade' => 'Traded',
+        'lost' => 'Lost',
+        'damaged' => 'Damaged',
+        _ => 'Gone',
+      };
 }

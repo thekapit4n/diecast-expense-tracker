@@ -1,5 +1,6 @@
 import 'package:diecast_mobile/core/ownership.dart';
 import 'package:diecast_mobile/data/disposals.dart';
+import 'package:diecast_mobile/data/models/disposal.dart';
 import 'package:diecast_mobile/data/models/purchase.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -81,6 +82,62 @@ void main() {
     test('returns the list unchanged when there are no disposals at all', () {
       final input = [_p(quantity: 2)];
       expect(identical(applyDisposals(input, {}), input), isTrue);
+    });
+  });
+
+  group('withDisposals', () {
+    Disposal d({int quantity = 1, String reason = 'gift', String status = 'active'}) =>
+        Disposal(
+          purchaseId: 'p1',
+          quantity: quantity,
+          reason: reason,
+          status: status,
+        );
+
+    test('derives the count from the records so the two cannot disagree', () {
+      final p = _p(quantity: 3).withDisposals([d(quantity: 2)]);
+      expect(p.disposedQty, 2);
+      expect(ownedQuantity(p), 1);
+    });
+
+    test('a returned record frees its unit again', () {
+      final p = _p(quantity: 1).withDisposals([d(status: 'returned')]);
+      expect(p.disposedQty, 0);
+      expect(ownedQuantity(p), 1);
+    });
+
+    test('sums several records against one purchase', () {
+      final p = _p(quantity: 3).withDisposals([
+        d(quantity: 1, reason: 'gift'),
+        d(quantity: 1, reason: 'sold'),
+      ]);
+      expect(p.disposedQty, 2);
+      expect(ownedQuantity(p), 1);
+    });
+  });
+
+  group('Disposal.label', () {
+    test('maps each reason to its badge wording', () {
+      String labelFor(String reason) => Disposal(
+            purchaseId: 'p1',
+            quantity: 1,
+            reason: reason,
+            status: 'active',
+          ).label;
+
+      expect(labelFor('gift'), 'GIFT');
+      expect(labelFor('sold'), 'SOLD');
+      expect(labelFor('trade'), 'TRADED');
+      expect(labelFor('lost'), 'LOST');
+      expect(labelFor('damaged'), 'DAMAGED');
+    });
+
+    test('falls back rather than showing a raw database value', () {
+      expect(
+        Disposal(purchaseId: 'p1', quantity: 1, reason: 'whatever', status: 'active')
+            .label,
+        'GONE',
+      );
     });
   });
 }

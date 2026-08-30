@@ -1,3 +1,5 @@
+import 'disposal.dart';
+
 /// Columns every [Purchase]-backed screen needs: the dashboard metrics, the
 /// spending insights aggregation, and the joined collection name/brand for the
 /// "recent purchases" list. Shared so the model and the queries cannot drift.
@@ -31,6 +33,7 @@ class Purchase {
     required this.editionType,
     required this.createdAt,
     this.disposedQty = 0,
+    this.disposals = const [],
   });
 
   final String? id;
@@ -62,7 +65,11 @@ class Purchase {
   /// defaults to 0 for queries that don't care about disposals.
   final int disposedQty;
 
-  Purchase withDisposedQty(int qty) => Purchase(
+  /// The individual records of those units leaving — reason, who got it, when.
+  /// Only loaded by screens that show the detail; empty elsewhere.
+  final List<Disposal> disposals;
+
+  Purchase _copyWith({int? disposedQty, List<Disposal>? disposals}) => Purchase(
     id: id,
     collectionId: collectionId,
     collectionName: collectionName,
@@ -81,7 +88,20 @@ class Purchase {
     isChase: isChase,
     editionType: editionType,
     createdAt: createdAt,
-    disposedQty: qty,
+    disposedQty: disposedQty ?? this.disposedQty,
+    disposals: disposals ?? this.disposals,
+  );
+
+  /// Count only — for screens that show how many are left but not where they
+  /// went (dashboard, insights).
+  Purchase withDisposedQty(int qty) => _copyWith(disposedQty: qty);
+
+  /// Records plus the count derived from them, so the two can never disagree.
+  Purchase withDisposals(List<Disposal> records) => _copyWith(
+    disposals: records,
+    disposedQty: records
+        .where((d) => d.isActive)
+        .fold<int>(0, (sum, d) => sum + d.quantity),
   );
 
   factory Purchase.fromRow(Map<String, dynamic> row) {

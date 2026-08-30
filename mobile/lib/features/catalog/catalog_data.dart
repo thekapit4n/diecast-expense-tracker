@@ -5,6 +5,7 @@ import '../../core/error_view.dart' show ensureOnline, requestTimeout;
 import '../../core/ownership.dart';
 import '../../data/catalog_image_paths.dart';
 import '../../data/models/catalog_item.dart';
+import '../../data/models/disposal.dart';
 import '../../data/models/purchase.dart';
 
 /// Everything the catalog screen needs: the built tiles plus the brand list.
@@ -53,10 +54,16 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
 
   // Cars that have left the collection. Without this the app would keep
   // counting a car you gave away as owned, and disagree with the web app.
+  // The full records come back, not just counts, so the detail sheet can say
+  // where each one went.
   final disposalsF = supabase
       .from('tbl_disposal')
-      .select('purchase_id, quantity, status')
-      .eq('status', 'active');
+      .select(
+        'purchase_id, quantity, reason, status, counterparty, '
+        'disposal_date, gross_amount, remark',
+      )
+      .eq('status', 'active')
+      .order('disposal_date', ascending: false);
 
   final results = await Future.wait([
     collectionsF,
@@ -71,14 +78,11 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
   final detailsRaw = results[3] as List;
   final disposalsRaw = results[4] as List;
 
-  // --- Units that have left, per purchase ---
-  final disposedByPurchase = <String, int>{};
+  // --- Records of units that have left, per purchase ---
+  final disposalsByPurchase = <String, List<Disposal>>{};
   for (final row in disposalsRaw) {
-    final map = row as Map<String, dynamic>;
-    final pid = map['purchase_id'] as String?;
-    if (pid == null) continue;
-    final qty = (map['quantity'] as num?)?.toInt() ?? 0;
-    disposedByPurchase[pid] = (disposedByPurchase[pid] ?? 0) + qty;
+    final d = Disposal.fromRow(row as Map<String, dynamic>);
+    (disposalsByPurchase[d.purchaseId] ??= []).add(d);
   }
 
   // --- Group purchases per collection ---
@@ -88,8 +92,10 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
     final cid = map['collection_id'] as String?;
     if (cid == null) continue;
     final p = Purchase.fromRow(map);
-    final gone = p.id == null ? 0 : (disposedByPurchase[p.id] ?? 0);
-    (purchaseMap[cid] ??= []).add(gone > 0 ? p.withDisposedQty(gone) : p);
+    final gone = p.id == null ? null : disposalsByPurchase[p.id];
+    (purchaseMap[cid] ??= []).add(
+      gone != null && gone.isNotEmpty ? p.withDisposals(gone) : p,
+    );
   }
 
   // --- Group case flags per collection, split by variant ---
