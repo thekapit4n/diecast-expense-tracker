@@ -42,7 +42,7 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
   final purchasesF = supabase
       .from('tbl_purchase')
       .select(
-        'collection_id, quantity, price_per_unit, total_price, amount_paid, '
+        'id, collection_id, quantity, price_per_unit, total_price, amount_paid, '
         'is_chase, edition_type, shop_name, platform, payment_date, payment_status, '
         'ready_date, collected_date, po_order_id, created_at',
       );
@@ -51,16 +51,35 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
       .from('tbl_collection_detail')
       .select('collection_id, is_case, is_chase');
 
+  // Cars that have left the collection. Without this the app would keep
+  // counting a car you gave away as owned, and disagree with the web app.
+  final disposalsF = supabase
+      .from('tbl_disposal')
+      .select('purchase_id, quantity, status')
+      .eq('status', 'active');
+
   final results = await Future.wait([
     collectionsF,
     brandsF,
     purchasesF,
     detailsF,
+    disposalsF,
   ]).timeout(requestTimeout);
   final collectionsRaw = results[0] as List;
   final brandsRaw = results[1] as List;
   final purchasesRaw = results[2] as List;
   final detailsRaw = results[3] as List;
+  final disposalsRaw = results[4] as List;
+
+  // --- Units that have left, per purchase ---
+  final disposedByPurchase = <String, int>{};
+  for (final row in disposalsRaw) {
+    final map = row as Map<String, dynamic>;
+    final pid = map['purchase_id'] as String?;
+    if (pid == null) continue;
+    final qty = (map['quantity'] as num?)?.toInt() ?? 0;
+    disposedByPurchase[pid] = (disposedByPurchase[pid] ?? 0) + qty;
+  }
 
   // --- Group purchases per collection ---
   final purchaseMap = <String, List<Purchase>>{};
@@ -68,7 +87,9 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
     final map = row as Map<String, dynamic>;
     final cid = map['collection_id'] as String?;
     if (cid == null) continue;
-    (purchaseMap[cid] ??= []).add(Purchase.fromRow(map));
+    final p = Purchase.fromRow(map);
+    final gone = p.id == null ? 0 : (disposedByPurchase[p.id] ?? 0);
+    (purchaseMap[cid] ??= []).add(gone > 0 ? p.withDisposedQty(gone) : p);
   }
 
   // --- Group case flags per collection, split by variant ---
@@ -120,7 +141,7 @@ final catalogProvider = FutureProvider.autoDispose<CatalogData>((ref) async {
           if (p.editionType != null && p.editionType != 'normal')
             p.editionType!,
       },
-      totalQty: ps.where(isOwned).fold(0, (s, p) => s + p.quantity),
+      totalQty: ps.fold(0, (s, p) => s + ownedQuantity(p)),
       preOrderQty: ps.where(isPreOrder).fold(0, (s, p) => s + p.quantity),
       imageSources: catalogImageSources(
         brandName: brandName,

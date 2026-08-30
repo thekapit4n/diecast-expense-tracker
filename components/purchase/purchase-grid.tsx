@@ -19,9 +19,11 @@ import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { EditPurchaseModal } from "./edit-purchase-modal"
+import { DisposalModal, type DisposalModalItem } from "./disposal-modal"
 import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog"
 import { Link as LinkIcon } from "lucide-react"
 import { buildCatalogSearchTerm, hasCatalogImages } from "@/lib/collection-images"
+import { disposalBadgeLabel, disposalPastLabel } from "@/lib/disposal"
 import { tw } from "@/lib/theme/diecast-theme"
 
 // Register AG Grid modules (Enterprise only)
@@ -109,6 +111,10 @@ export interface PurchaseItem {
   country: string | null
   remark: string | null
   collection_remark: string | null
+  /* units from this purchase that have left — gifted, sold or lost */
+  disposed_qty: number
+  /* why they left, one entry per disposal record */
+  disposed_reasons: string[]
 }
 
 export interface PurchaseGridRef {
@@ -128,6 +134,7 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
   const [error, setError] = useState<string | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null)
+  const [disposalItem, setDisposalItem] = useState<DisposalModalItem | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [purchaseToDelete, setPurchaseToDelete] = useState<PurchaseItem | null>(null)
   const gridApiRef = useRef<GridApi<PurchaseItem> | null>(null)
@@ -213,6 +220,29 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         throw error
       }
 
+      /* Units that have left, per purchase. Returned COD parcels came back,
+       * so only 'active' rows reduce what's still on the shelf. */
+      const { data: disposalData, error: disposalError } = await supabase
+        .from("tbl_disposal")
+        .select("purchase_id, quantity, status, reason")
+        .eq("status", "active")
+
+      if (disposalError) {
+        throw disposalError
+      }
+
+      const disposedByPurchase = new Map<string, { qty: number; reasons: string[] }>()
+      for (const d of (disposalData || []) as {
+        purchase_id: string
+        quantity: number | null
+        reason: string | null
+      }[]) {
+        const entry = disposedByPurchase.get(d.purchase_id) ?? { qty: 0, reasons: [] }
+        entry.qty += d.quantity || 0
+        if (d.reason) entry.reasons.push(d.reason)
+        disposedByPurchase.set(d.purchase_id, entry)
+      }
+
       const formattedData: PurchaseItem[] = (data || []).map((item: any) => ({
         id: item.id,
         collection_id: item.collection_id,
@@ -243,6 +273,8 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         country: item.country,
         remark: item.remark,
         collection_remark: item.tbl_collection.remark ?? null,
+        disposed_qty: disposedByPurchase.get(item.id)?.qty ?? 0,
+        disposed_reasons: disposedByPurchase.get(item.id)?.reasons ?? [],
       }))
 
       // Sort by payment date descending (most recent first)
@@ -369,6 +401,47 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
         defaultOption: 'equals',
         buttons: ['reset', 'apply'],
         closeOnApply: true,
+      },
+    },
+    {
+      /* Quantity is what was bought and never changes. This is what's still on
+       * the shelf after anything gifted, sold or lost. Hidden by default so the
+       * grid stays as it was for anyone not tracking disposals. */
+      colId: "still_owned",
+      headerName: "Still Owned",
+      hide: true,
+      sortable: true,
+      width: 120,
+      type: "numericColumn",
+      valueGetter: (params) =>
+        params.data ? Math.max(params.data.quantity - params.data.disposed_qty, 0) : 0,
+      cellRenderer: (params: ICellRendererParams<PurchaseItem>) => {
+        const row = params.data
+        if (!row) return null
+        const owned = Math.max(row.quantity - row.disposed_qty, 0)
+
+        /* Nothing has left — plain number, reads the same as Quantity. */
+        if (row.disposed_qty === 0) return <span>{owned}</span>
+
+        /* All of it has left. Name the reason rather than just "gone" — "Gift"
+         * and "Sold" are the two you actually want to tell apart at a glance. */
+        if (owned === 0) {
+          return (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${tw.badgeMuted}`}>
+              {disposalBadgeLabel(row.disposed_reasons)}
+            </span>
+          )
+        }
+
+        /* Part of a multi-unit row has left. */
+        return (
+          <span>
+            {owned}{" "}
+            <span className="text-xs text-muted-foreground">
+              of {row.quantity} ({row.disposed_qty} {disposalPastLabel(row.disposed_reasons)})
+            </span>
+          </span>
+        )
       },
     },
     {
@@ -773,6 +846,29 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
             }
           },
         })
+        /* Recording a car leaving is never a delete — the money spent on it
+         * stays on the books, only the owned count drops. Disabled once every
+         * unit on the row has already gone. */
+        const row = params.node?.data
+        const remaining = row ? row.quantity - row.disposed_qty : 0
+        result.unshift({
+          name: "Car Left Collection (Gift / Sold)",
+          disabled: remaining <= 0,
+          tooltip:
+            remaining <= 0 ? "Every unit on this purchase has already left" : undefined,
+          icon: '<span class="ag-icon ag-icon-arrows"></span>',
+          action: () => {
+            if (!row) return
+            setDisposalItem({
+              purchaseId: row.id,
+              collectionId: row.collection_id,
+              collectionName: row.collection_name,
+              quantity: row.quantity,
+              pricePerUnit: row.price_per_unit ?? 0,
+              alreadyDisposed: row.disposed_qty,
+            })
+          },
+        })
         result.unshift("separator")
       }
 
@@ -787,6 +883,19 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
 
   const handleDeletePurchase = useCallback(async () => {
     if (!purchaseToDelete) return
+
+    /* Deleting a purchase that has a gift or sale attached would destroy the
+     * record of where the car went — and the money it earned. The DB blocks it
+     * too (ON DELETE RESTRICT); this catches it first with a readable message. */
+    if (purchaseToDelete.disposed_qty > 0) {
+      toast.error(
+        "Can't delete — this purchase has a recorded gift or sale attached. Remove that record first."
+      )
+      setDeleteDialogOpen(false)
+      setPurchaseToDelete(null)
+      return
+    }
+
     try {
       const { error: detailError } = await supabase
         .from("tbl_collection_detail")
@@ -915,6 +1024,14 @@ export const PurchaseGrid = forwardRef<PurchaseGridRef>((props, ref) => {
           onSuccess={handleEditSuccess}
         />
       )}
+
+      <DisposalModal
+        item={disposalItem}
+        onOpenChange={(open) => {
+          if (!open) setDisposalItem(null)
+        }}
+        onSuccess={reload}
+      />
 
       <ConfirmDeleteDialog
         open={deleteDialogOpen}

@@ -12,6 +12,15 @@ bool isOwned(Purchase p) =>
 /// A pre-order is a tracked PO line item that isn't owned yet.
 bool isPreOrder(Purchase p) => p.poOrderId != null && !isOwned(p);
 
+/// Units still physically in the collection: the purchase completed, minus
+/// anything that has left since (gifted, sold, traded, lost). Every disposal
+/// reason reduces this — only the profit report cares which.
+int ownedQuantity(Purchase p) {
+  if (!isOwned(p)) return 0;
+  final left = p.quantity - p.disposedQty;
+  return left > 0 ? left : 0;
+}
+
 /// Ready to collect: a pre-order the seller has marked ready but not yet
 /// collected.
 bool isReadyToCollect(Purchase p) =>

@@ -5,12 +5,16 @@ import Image from "next/image"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw, ShoppingBag, CalendarDays, Package, Copy } from "lucide-react"
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, ShoppingBag, CalendarDays, Package, PackageX, Copy } from "lucide-react"
 import { toast } from "sonner"
 import { appendImageCacheVersion, stripImageCacheVersion } from "@/lib/collection-images"
 import { cn } from "@/lib/utils"
 import { colors, tw } from "@/lib/theme/diecast-theme"
-import { isPreOrderPurchase } from "@/lib/catalog-ownership"
+import { isPreOrderPurchase, ownedQuantity } from "@/lib/catalog-ownership"
+import { disposalBadgeLabel, disposalPastLabel } from "@/lib/disposal"
+import { useAuth } from "@/lib/auth/auth-context"
+import { DisposalModal, type DisposalModalItem } from "@/components/purchase/disposal-modal"
+import { useRouter } from "next/navigation"
 import type { CatalogItem, PurchaseRecord } from "@/lib/catalog-types"
 
 interface CardDetailSheetProps {
@@ -67,6 +71,13 @@ export default function CardDetailSheet({
   const [imageIndex, setImageIndex] = useState(0)
   const touchStartX = useRef<number | null>(null)
 
+  /* The catalog is a public page, so the disposal action is only offered to a
+   * logged-in owner. Recording from here beats the Purchase List when you're
+   * going by the photo rather than the item number. */
+  const { user } = useAuth()
+  const router = useRouter()
+  const [disposalItem, setDisposalItem] = useState<DisposalModalItem | null>(null)
+
   useEffect(() => {
     setFailedUrls(new Set())
     setImageIndex(0)
@@ -106,6 +117,7 @@ export default function CardDetailSheet({
   const preOrderQty = item?.preOrderQty ?? 0
 
   return (
+    <>
     <Drawer open={!!item} onClose={onClose}>
       <DrawerContent className={cn("border-t-2 focus:outline-none", tw.sheet)} style={{ borderColor: colors.accent.default }}>
         <div className="mx-auto mt-2 h-1 w-12 rounded-full" style={{ backgroundColor: colors.accent.handle }} />
@@ -329,6 +341,19 @@ export default function CardDetailSheet({
                                     Pre-order
                                   </span>
                                 )}
+                                {/* Owner-only: where a car went is private. Visitors
+                                    still get a correct owned count — that's computed
+                                    server-side — they just don't see gift or sale
+                                    details, or who received it. */}
+                                {user && p.disposedQty > 0 && (
+                                  <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                                    {p.disposedQty >= p.quantity
+                                      ? disposalBadgeLabel(p.disposals.map((d) => d.reason))
+                                      : `${p.disposedQty} of ${p.quantity} ${disposalPastLabel(
+                                          p.disposals.map((d) => d.reason)
+                                        )}`}
+                                  </span>
+                                )}
                               </div>
                               {p.platform && (
                                 <p className="mt-0.5 pl-[18px] text-[10px] text-[var(--text-slate)]">
@@ -371,6 +396,64 @@ export default function CardDetailSheet({
                               <span className="text-[11px] font-semibold text-[var(--text-secondary)]">{formatPrice(p.totalPrice)}</span>
                             </div>
                           )}
+
+                          {/* Where it went — recipient names and remarks, so this is
+                              owner-only like the badge above. */}
+                          {user && p.disposals.length > 0 && (
+                            <div className="mt-2 flex flex-col gap-1.5 border-t border-border pt-2">
+                              {p.disposals.map((d, dIdx) => {
+                                const dDate = formatDate(d.disposalDate)
+                                const parts = [
+                                  disposalBadgeLabel([d.reason]),
+                                  d.counterparty,
+                                  d.reason === "sold" && d.grossAmount != null
+                                    ? formatPrice(d.grossAmount)
+                                    : null,
+                                  dDate,
+                                ].filter(Boolean)
+                                return (
+                                  <div key={dIdx} className="flex items-start gap-1.5">
+                                    <PackageX className="mt-0.5 h-3 w-3 shrink-0 text-[var(--text-slate)]" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-[10px] text-[var(--text-slate)]">
+                                        {parts.join(" · ")}
+                                        {p.quantity > 1 && ` · ×${d.quantity}`}
+                                      </p>
+                                      {d.remark && (
+                                        <p className="mt-0.5 text-[10px] italic text-[var(--text-muted)]">
+                                          {d.remark}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          {/* Owner-only. Hidden once every unit on this purchase
+                              has already left — there's nothing more to record. */}
+                          {user && ownedQuantity(p) > 0 && (
+                            <div className="mt-2 flex justify-end border-t border-border pt-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDisposalItem({
+                                    purchaseId: p.id,
+                                    collectionId: item.id.split("::")[0],
+                                    collectionName: item.name,
+                                    quantity: p.quantity,
+                                    pricePerUnit: p.pricePerUnit ?? 0,
+                                    alreadyDisposed: p.disposedQty,
+                                  })
+                                }
+                                className="flex items-center gap-1.5 rounded-full border border-[var(--border-strong)] bg-muted/60 px-3 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <PackageX className="h-3.5 w-3.5" />
+                                Car left collection
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )
                     })}
@@ -389,5 +472,21 @@ export default function CardDetailSheet({
         )}
       </DrawerContent>
     </Drawer>
+
+    {/* Sibling of the drawer, not a child — a dialog nested inside vaul's
+        drawer ends up fighting it for focus. The catalog is server-rendered,
+        so router.refresh() is what makes the owned count and the new badge
+        appear after saving. */}
+    <DisposalModal
+      item={disposalItem}
+      onOpenChange={(open) => {
+        if (!open) setDisposalItem(null)
+      }}
+      onSuccess={() => {
+        setDisposalItem(null)
+        router.refresh()
+      }}
+    />
+    </>
   )
 }

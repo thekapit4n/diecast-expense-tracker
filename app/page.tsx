@@ -185,8 +185,23 @@ export default function DashboardPage() {
 
         if (error) throw error
 
-        const totalQty = data?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
-        
+        const purchasedQty = data?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+
+        /* Cars that left the collection — gifted, sold or lost — are no longer
+         * items on the shelf, even though the money spent on them stays in
+         * "Total Spent". Returned COD parcels came back, so they don't count. */
+        const { data: disposalData, error: disposalError } = await supabase
+          .from("tbl_disposal")
+          .select("quantity, status")
+          .eq("status", "active")
+
+        if (disposalError) throw disposalError
+
+        const disposedQty =
+          disposalData?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+
+        const totalQty = Math.max(purchasedQty - disposedQty, 0)
+
         // Get this month's items for trend
         const currentMonth = new Date().getMonth()
         const currentYear = new Date().getFullYear()

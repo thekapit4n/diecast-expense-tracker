@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/supabase.dart';
 import '../../core/error_view.dart' show ensureOnline, requestTimeout;
 import '../../core/ownership.dart';
+import '../../data/disposals.dart';
 import '../../data/models/purchase.dart';
 
 /// Aggregated numbers for the home dashboard, computed from all purchases
@@ -27,13 +28,18 @@ class DashboardData {
 
 final dashboardProvider = FutureProvider.autoDispose<DashboardData>((ref) async {
   await ensureOnline();
-  final rows = await supabase
-      .from('tbl_purchase')
-      .select(purchaseSelect)
-      .timeout(requestTimeout);
+  final results = await Future.wait<dynamic>([
+    supabase.from('tbl_purchase').select(purchaseSelect),
+    fetchDisposedByPurchase(),
+  ]).timeout(requestTimeout);
 
-  final purchases =
-      (rows as List).map((r) => Purchase.fromRow(r as Map<String, dynamic>)).toList();
+  final rows = results[0] as List;
+  final disposed = results[1] as Map<String, int>;
+
+  final purchases = applyDisposals(
+    rows.map((r) => Purchase.fromRow(r as Map<String, dynamic>)).toList(),
+    disposed,
+  );
 
   final ownedCollectionIds = <String>{};
   var unitsOwned = 0;
@@ -42,8 +48,11 @@ final dashboardProvider = FutureProvider.autoDispose<DashboardData>((ref) async 
   var outstandingOrders = 0;
 
   for (final p in purchases) {
-    if (isOwned(p)) {
-      unitsOwned += p.quantity;
+    // Cars that have left are no longer units on the shelf, even though the
+    // money spent on them stays in the spending figures.
+    final owned = ownedQuantity(p);
+    if (owned > 0) {
+      unitsOwned += owned;
       if (p.collectionId != null) ownedCollectionIds.add(p.collectionId!);
     }
     if (isPreOrder(p)) activePreOrderUnits += p.quantity;
