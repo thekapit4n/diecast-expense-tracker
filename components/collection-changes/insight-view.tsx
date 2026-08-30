@@ -7,17 +7,20 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { DISPOSAL_ROUTES, isRealisedSale, netProfit } from "@/lib/disposal"
-import type { ReasonCount, MonthProfit } from "./insight-charts"
+import type { SortedBarDatum } from "@/components/charts/sorted-bar-chart"
+import type { MonthProfit } from "@/components/charts/profit-column-chart"
 
 /* amCharts touches the DOM at construction, so it never renders on the server. */
-const ReasonBarChart = dynamic(
-  () => import("./insight-charts").then((m) => m.ReasonBarChart),
+const SortedBarChart = dynamic(
+  () => import("@/components/charts/sorted-bar-chart").then((m) => m.SortedBarChart),
   { ssr: false, loading: () => <ChartSkeleton /> }
 )
 const ProfitColumnChart = dynamic(
-  () => import("./insight-charts").then((m) => m.ProfitColumnChart),
+  () => import("@/components/charts/profit-column-chart").then((m) => m.ProfitColumnChart),
   { ssr: false, loading: () => <ChartSkeleton /> }
 )
+
+const formatCount = (n: number) => `${n} car${n === 1 ? "" : "s"}`
 
 function ChartSkeleton() {
   return <div className="h-[260px] w-full animate-pulse rounded-lg bg-muted" />
@@ -124,7 +127,7 @@ export function InsightView() {
     return { unitsGone, realisedProfit, grossTaken, sellingCosts, pending, soldUnits }
   }, [active])
 
-  const reasonData: ReasonCount[] = useMemo(() => {
+  const reasonData: SortedBarDatum[] = useMemo(() => {
     const counts = new Map<string, number>()
     for (const r of active) {
       counts.set(r.reason, (counts.get(r.reason) ?? 0) + r.quantity)
@@ -133,8 +136,8 @@ export function InsightView() {
      * the data invents a category. */
     return DISPOSAL_ROUTES.map((route) => ({
       label: route.label,
-      count: counts.get(route.reason) ?? 0,
-    })).filter((d) => d.count > 0)
+      value: counts.get(route.reason) ?? 0,
+    })).filter((d) => d.value > 0)
   }, [active])
 
   const profitData: MonthProfit[] = useMemo(() => {
@@ -232,7 +235,12 @@ export function InsightView() {
         <p className="mb-2 text-sm text-muted-foreground">
           {stats.unitsGone} car{stats.unitsGone === 1 ? "" : "s"} have left, by reason
         </p>
-        <ReasonBarChart data={reasonData} />
+        <SortedBarChart
+          data={reasonData}
+          formatValue={formatCount}
+          integerAxis
+          minHeight={220}
+        />
       </div>
 
       <div className="rounded-xl border p-4">
@@ -266,11 +274,11 @@ export function InsightView() {
               {reasonData.map((d) => (
                 <tr key={d.label} className="border-b last:border-0">
                   <td className="py-2">{d.label}</td>
-                  <td className="py-2 text-right tabular-nums">{d.count}</td>
+                  <td className="py-2 text-right tabular-nums">{d.value}</td>
                   <td className="py-2 text-right tabular-nums text-muted-foreground">
                     {stats.unitsGone === 0
                       ? "—"
-                      : `${Math.round((d.count / stats.unitsGone) * 100)}%`}
+                      : `${Math.round((d.value / stats.unitsGone) * 100)}%`}
                   </td>
                 </tr>
               ))}
