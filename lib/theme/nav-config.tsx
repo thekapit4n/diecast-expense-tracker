@@ -8,6 +8,12 @@ import {
   WalletDone01Icon,
   ShoppingCartAdd02Icon,
   DeliveryDelay02Icon,
+  PieChart01Icon,
+  SaleTag01Icon,
+  GiftIcon,
+  ExchangeIcon,
+  LocationOfflineIcon,
+  AlertCircleIcon,
   TagsIcon,
   StoreLocation02Icon,
   ImageDownload02Icon,
@@ -30,6 +36,12 @@ const CatalogIcon = hugeIcon(GarageIcon)
 const PurchaseListIcon = hugeIcon(WalletDone01Icon)
 const NewPurchaseIcon = hugeIcon(ShoppingCartAdd02Icon)
 const PreorderTrackerIcon = hugeIcon(DeliveryDelay02Icon)
+const InsightIcon = hugeIcon(PieChart01Icon)
+const SoldIcon = hugeIcon(SaleTag01Icon)
+const GiftedIcon = hugeIcon(GiftIcon)
+const TradedIcon = hugeIcon(ExchangeIcon)
+const LostIcon = hugeIcon(LocationOfflineIcon)
+const DamagedIcon = hugeIcon(AlertCircleIcon)
 const BrandIcon = hugeIcon(TagsIcon)
 const ShopIcon = hugeIcon(StoreLocation02Icon)
 const ImageImportIcon = hugeIcon(ImageDownload02Icon)
@@ -63,6 +75,17 @@ export const navGroups: NavGroup[] = [
       { href: "/purchase/list", label: "List", icon: PurchaseListIcon },
       { href: "/purchase/add", label: "New Purchase", icon: NewPurchaseIcon },
       { href: "/purchase/preorders", label: "Pre-order Tracker", icon: PreorderTrackerIcon },
+    ],
+  },
+  {
+    label: "Collection Changes",
+    items: [
+      { href: "/collection-changes/insight", label: "Insight", icon: InsightIcon },
+      { href: "/collection-changes/sold", label: "Sold", icon: SoldIcon },
+      { href: "/collection-changes/gifted", label: "Gifted", icon: GiftedIcon },
+      { href: "/collection-changes/traded", label: "Traded", icon: TradedIcon },
+      { href: "/collection-changes/lost", label: "Lost", icon: LostIcon },
+      { href: "/collection-changes/damaged", label: "Damaged", icon: DamagedIcon },
     ],
   },
   {

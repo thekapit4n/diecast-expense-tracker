@@ -2,7 +2,7 @@
 /// spending insights aggregation, and the joined collection name/brand for the
 /// "recent purchases" list. Shared so the model and the queries cannot drift.
 const purchaseSelect = '''
-  collection_id, quantity, price_per_unit, total_price, amount_paid,
+  id, collection_id, quantity, price_per_unit, total_price, amount_paid,
   payment_status, payment_date, po_order_id, ready_date, collected_date,
   is_chase, shop_name, created_at,
   tbl_collection ( name, item_no, tbl_master_brand ( name ) )
@@ -12,6 +12,7 @@ const purchaseSelect = '''
 /// Field names mirror the web app's PurchaseRecord where they overlap.
 class Purchase {
   Purchase({
+    this.id,
     required this.collectionId,
     required this.collectionName,
     required this.itemNo,
@@ -29,8 +30,10 @@ class Purchase {
     required this.isChase,
     required this.editionType,
     required this.createdAt,
+    this.disposedQty = 0,
   });
 
+  final String? id;
   final String? collectionId;
   final String collectionName;
   final String? itemNo;
@@ -54,6 +57,33 @@ class Purchase {
   /// Epoch seconds (tbl_purchase.created_at is a BIGINT).
   final int? createdAt;
 
+  /// Units from this purchase that have left the collection — gifted, sold,
+  /// traded or lost. Filled in from tbl_disposal by whoever loads the rows;
+  /// defaults to 0 for queries that don't care about disposals.
+  final int disposedQty;
+
+  Purchase withDisposedQty(int qty) => Purchase(
+    id: id,
+    collectionId: collectionId,
+    collectionName: collectionName,
+    itemNo: itemNo,
+    brandName: brandName,
+    shopName: shopName,
+    quantity: quantity,
+    pricePerUnit: pricePerUnit,
+    totalPrice: totalPrice,
+    amountPaid: amountPaid,
+    paymentStatus: paymentStatus,
+    paymentDate: paymentDate,
+    poOrderId: poOrderId,
+    readyDate: readyDate,
+    collectedDate: collectedDate,
+    isChase: isChase,
+    editionType: editionType,
+    createdAt: createdAt,
+    disposedQty: qty,
+  );
+
   factory Purchase.fromRow(Map<String, dynamic> row) {
     // tbl_collection is joined as a nested object (to-one relation).
     final collection = row['tbl_collection'] as Map<String, dynamic>?;
@@ -62,6 +92,7 @@ class Purchase {
     double? toDouble(dynamic v) => v == null ? null : (v as num).toDouble();
 
     return Purchase(
+      id: row['id'] as String?,
       collectionId: row['collection_id'] as String?,
       collectionName: (collection?['name'] as String?) ?? 'Unknown item',
       itemNo: collection?['item_no'] as String?,
@@ -79,6 +110,7 @@ class Purchase {
       isChase: row['is_chase'] == true,
       editionType: row['edition_type'] as String?,
       createdAt: (row['created_at'] as num?)?.toInt(),
+      disposedQty: (row['disposed_qty'] as num?)?.toInt() ?? 0,
     );
   }
 }

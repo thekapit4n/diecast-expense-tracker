@@ -87,6 +87,7 @@ See [supabase/README.md](./supabase/README.md) for detailed information about da
 ├── app/                    # Next.js app directory (web admin)
 │   ├── catalog/           # Public/admin catalog pages
 │   ├── collection/        # Collection pages
+│   ├── collection-changes/ # Cars that left: sold/gifted/traded/lost + insight
 │   ├── purchase/          # Purchase + pre-order pages
 │   ├── management/        # Management pages (brands, shops, etc.)
 │   └── ...
@@ -112,6 +113,29 @@ See [supabase/README.md](./supabase/README.md) for detailed information about da
 - Category management
 - Purchase tracking
 - Pre-order tracking
+- Collection changes — record a car leaving (gift, sale, trade, loss) with
+  profit after postage and fees
+
+## Changelog
+
+Web admin work is logged day by day in plain language, so a non-technical
+reader can follow what changed and why.
+
+- **Daily log:** [documents/changes/](./documents/changes)
+- **Index:** [documents/changes/README.md](./documents/changes/README.md) —
+  every entry in one table, newest last
+
+The convention, which the index file also spells out:
+
+- One file per day, named `YYYY-MM-DD.md`
+- Sections: `Quick Overview` → `What Changed` → `User Impact` →
+  `Notes for Next Time`
+- Adding to a day that already has a file means **appending** to it, not
+  rewriting the earlier entry
+- Always update the daily file **and** the index row together
+
+The mobile app keeps its own separate changelog — see
+[Mobile App](#mobile-app).
 
 ## Mobile App
 
@@ -168,6 +192,8 @@ flutter test
 - **UI**: React, Tailwind CSS, shadcn/ui
 - **Forms**: React Hook Form, Zod
 - **Tables**: AG Grid
+- **Charts**: amCharts 5 — used under its free *linkware* licence, so the
+  "Chart by amCharts" link must stay visible on every chart
 
 **Mobile app**
 

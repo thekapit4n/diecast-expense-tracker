@@ -4,6 +4,7 @@ import '../../config/supabase.dart';
 import '../../core/error_view.dart' show ensureOnline, requestTimeout;
 import '../../core/format.dart';
 import '../../core/ownership.dart';
+import '../../data/disposals.dart';
 import '../../data/models/purchase.dart';
 
 /// Money paid out in one calendar month.
@@ -103,23 +104,32 @@ InsightsData buildInsights(List<Purchase> purchases, DateTime now) {
       byMonth[key] = (byMonth[key] ?? 0) + p.amountPaid;
     }
 
-    if (isOwned(p)) {
-      unitsOwned += p.quantity;
-      collectionValue += p.totalPrice ?? 0;
+    // Cars that have left stop counting towards what the collection holds and
+    // what it's worth. Spend above is untouched — that money really went out.
+    final owned = ownedQuantity(p);
+    if (owned > 0) {
+      // Prorate only when part of a multi-unit purchase has gone, so rows with
+      // no disposals keep reporting exactly the total they always did.
+      final ownedValue = owned == p.quantity
+          ? (p.totalPrice ?? 0)
+          : (p.totalPrice ?? 0) * owned / p.quantity;
+
+      unitsOwned += owned;
+      collectionValue += ownedValue;
       if (p.collectionId != null) ownedCollectionIds.add(p.collectionId!);
-      if (p.isChase) chaseUnits += p.quantity;
+      if (p.isChase) chaseUnits += owned;
 
       // Brand/shop breakdowns describe the collection, so they follow the same
       // "owned" rule as the value figures rather than counting open pre-orders.
       final brand = p.brandName?.trim();
       if (brand != null && brand.isNotEmpty) {
         final prev = byBrand[brand] ?? (0.0, 0);
-        byBrand[brand] = (prev.$1 + (p.totalPrice ?? 0), prev.$2 + p.quantity);
+        byBrand[brand] = (prev.$1 + ownedValue, prev.$2 + owned);
       }
       final shop = p.shopName?.trim();
       if (shop != null && shop.isNotEmpty) {
         final prev = byShop[shop] ?? (0.0, 0);
-        byShop[shop] = (prev.$1 + (p.totalPrice ?? 0), prev.$2 + p.quantity);
+        byShop[shop] = (prev.$1 + ownedValue, prev.$2 + owned);
       }
     }
   }
@@ -162,13 +172,18 @@ List<CategorySpend> _top(Map<String, (double, int)> totals) {
 
 final insightsProvider = FutureProvider.autoDispose<InsightsData>((ref) async {
   await ensureOnline();
-  final rows = await supabase
-      .from('tbl_purchase')
-      .select(purchaseSelect)
-      .timeout(requestTimeout);
+  final results = await Future.wait<dynamic>([
+    supabase.from('tbl_purchase').select(purchaseSelect),
+    fetchDisposedByPurchase(),
+  ]).timeout(requestTimeout);
 
-  final purchases =
-      (rows as List).map((r) => Purchase.fromRow(r as Map<String, dynamic>)).toList();
+  final rows = results[0] as List;
+  final disposed = results[1] as Map<String, int>;
+
+  final purchases = applyDisposals(
+    rows.map((r) => Purchase.fromRow(r as Map<String, dynamic>)).toList(),
+    disposed,
+  );
 
   return buildInsights(purchases, DateTime.now());
 });

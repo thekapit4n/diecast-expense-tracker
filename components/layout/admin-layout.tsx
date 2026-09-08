@@ -22,6 +22,7 @@ function getPageTitle(pathname: string): string {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
   if (pathname.startsWith("/management/")) return "Management"
   if (pathname.startsWith("/purchase/")) return "Purchases"
+  if (pathname.startsWith("/collection-changes")) return "Collection Changes"
   return "Diecast Tracker"
 }
 
