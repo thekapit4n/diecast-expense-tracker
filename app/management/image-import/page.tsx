@@ -529,7 +529,7 @@ export default function ImageImportPage() {
           <CardTitle className={tw.cardHeading}>Mini GT — Import From Product URL</CardTitle>
           <CardDescription>
             Existing Mini GT flow: scrape images from minigt.tsm-models.com. Series format must be
-            like MGT00009.
+            like MGT00009 or MGTS0026.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -9,10 +9,11 @@ import {
   isSafeBrandSlug,
   isSafeFileName,
   isSafeFolderKey,
+  isMiniGtSeries,
 } from "@/lib/collection-images"
 
 function isLegacyMiniGtSeries(segment: string): boolean {
-  return /^MGT\d{5}$/i.test(segment)
+  return isMiniGtSeries(segment)
 }
 
 function resolveImagePath(

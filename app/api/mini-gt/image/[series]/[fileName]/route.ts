@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { promises as fs } from "fs"
 import path from "path"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { isMiniGtSeries } from "@/lib/collection-images"
 
 const STORAGE_BUCKET = process.env.SUPABASE_IMAGE_BUCKET || "diecast-images"
 const STORAGE_BRAND_PREFIX = "mini-gt"
@@ -15,7 +16,7 @@ function getMimeType(fileName: string): string {
 }
 
 function isSafeSeries(series: string): boolean {
-  return /^MGT\d{5}$/i.test(series)
+  return isMiniGtSeries(series)
 }
 
 function isSafeFileName(fileName: string): boolean {

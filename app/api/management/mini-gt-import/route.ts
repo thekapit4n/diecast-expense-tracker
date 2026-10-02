@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import path from "path"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { isMiniGtSeries } from "@/lib/collection-images"
 
 const ALLOWED_PRODUCT_HOST = "minigt.tsm-models.com"
 const ALLOWED_IMAGE_HOST = "minigt.tsm-models.com"
@@ -21,7 +22,7 @@ const ACCEPTED_IMAGE_PATH_PATTERNS = [
 
 function sanitizeSeries(series: string): string | null {
   const normalized = series.trim().toUpperCase()
-  return /^MGT\d{5}$/.test(normalized) ? normalized : null
+  return isMiniGtSeries(normalized) ? normalized : null
 }
 
 function isAllowedProductUrl(rawUrl: string): boolean {
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
 
     const safeSeries = sanitizeSeries(rawSeries)
     if (!safeSeries) {
-      return NextResponse.json({ error: "Series must be like MGT00009" }, { status: 400 })
+      return NextResponse.json({ error: "Series must be like MGT00009 or MGTS0026" }, { status: 400 })
     }
 
     if (!isAllowedProductUrl(productUrl)) {
