@@ -23,6 +23,7 @@ Use this folder to record project updates day by day in simple English.
 | [2026-08-14](2026-08-14.md) | Mobile Catalog filter bar redesign, multi-select searchable brand picker, new Chase/Event Car/Edition Type filter |
 | [2026-08-26](2026-08-26.md) | Catalog brand filter pins selected to top, Purchase/Collection List brand & payment filters switched to checkboxes |
 | [2026-08-30](2026-08-30.md) | Record cars leaving the collection (gift/sold), Collection Changes section with Insight charts and photo cards, profit after postage and fees, mobile owned counts fixed |
+| [2026-10-02](2026-10-02.md) | Mini GT set item numbers (MGTS0026) accepted for image import, upload and catalog images |
 
 ## File Naming Rule
 
