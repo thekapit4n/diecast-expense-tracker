@@ -4,6 +4,20 @@ export const MAX_IMAGE_BYTES = 8 * 1024 * 1024
 export const MIN_UPLOAD_IMAGE_BYTES = 1024
 export const DEFAULT_CATALOG_IMAGE_SLOTS = 5
 
+// Mini GT item numbers: regular releases (MGT00009) and sets/specials that
+// carry a letter in the 4th slot (MGTS0026).
+const MINI_GT_SERIES_SOURCE = "MGT[A-Z0-9]\\d{4}"
+const MINI_GT_SERIES_EXACT = new RegExp(`^${MINI_GT_SERIES_SOURCE}$`, "i")
+const MINI_GT_SERIES_SEARCH = new RegExp(MINI_GT_SERIES_SOURCE)
+
+export function isMiniGtSeries(value: string): boolean {
+  return MINI_GT_SERIES_EXACT.test(value)
+}
+
+export function extractMiniGtSeries(itemNo: string): string | null {
+  return itemNo.trim().toUpperCase().match(MINI_GT_SERIES_SEARCH)?.[0] ?? null
+}
+
 const ACCEPTED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"] as const
 
 export function slugifyBrandName(name: string): string {
@@ -28,8 +42,7 @@ export function sanitizeFolderKey(itemNo: string, brandName: string): string | n
 
   const isMiniGt = brandName.trim().toLowerCase().includes("mini gt")
   if (isMiniGt) {
-    const match = normalized.match(/MGT\d{5}/)
-    return match ? match[0] : null
+    return extractMiniGtSeries(normalized)
   }
 
   const cleaned = normalized
@@ -80,7 +93,7 @@ export function isSafeBrandSlug(brandSlug: string): boolean {
 }
 
 export function isSafeFolderKey(folderKey: string, brandSlug: string): boolean {
-  if (brandSlug === "mini-gt" && /^MGT\d{5}$/i.test(folderKey)) {
+  if (brandSlug === "mini-gt" && isMiniGtSeries(folderKey)) {
     return true
   }
   return /^[A-Z0-9][A-Z0-9-]{0,63}$/.test(folderKey)
@@ -152,9 +165,8 @@ export function getMiniGtSeriesImageUrls(
   maxSlots: number = DEFAULT_CATALOG_IMAGE_SLOTS
 ): string[] {
   if (!itemNo) return []
-  const normalized = itemNo.trim().toUpperCase()
-  const series = normalized.match(/MGT\d+/)?.[0] || normalized
-  if (!/^MGT\d{5}$/.test(series)) return []
+  const series = extractMiniGtSeries(itemNo)
+  if (!series) return []
 
   return Array.from({ length: maxSlots }, (_, index) =>
     `/api/catalog/image/${series}/${index + 1}.jpg`
@@ -173,9 +185,7 @@ export function hasCatalogImages(options: {
 
   const isMiniGt = options.brandName.trim().toLowerCase().includes("mini gt")
   if (isMiniGt && options.itemNo) {
-    const normalized = options.itemNo.trim().toUpperCase()
-    const series = normalized.match(/MGT\d+/)?.[0] || normalized
-    if (/^MGT\d{5}$/.test(series)) {
+    if (extractMiniGtSeries(options.itemNo)) {
       return true
     }
   }

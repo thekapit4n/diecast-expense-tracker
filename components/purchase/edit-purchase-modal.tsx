@@ -39,6 +39,7 @@ import { ShopCombobox } from "@/components/ui/shop-combobox"
 import { PoOrderCombobox, type PoOrderOption } from "@/components/ui/po-order-combobox"
 import { resolveOrCreateShop } from "@/lib/shop/resolve-or-create"
 import { useUserTracking } from "@/lib/auth/use-user-tracking"
+import { extractMiniGtSeries } from "@/lib/collection-images"
 
 const editPurchaseSchema = z.object({
   // Collection fields
@@ -351,7 +352,7 @@ export function EditPurchaseModal({
 
           const collectionRemark: string = data.tbl_collection?.remark || ""
           const normalizedItemNo: string = (data.tbl_collection?.item_no || "").trim().toUpperCase()
-          const detectedSeries = normalizedItemNo.match(/MGT\d{5}/)?.[0] || ""
+          const detectedSeries = extractMiniGtSeries(normalizedItemNo) || ""
           const imagePathPrefix = detectedSeries ? `/api/mini-gt/image/${detectedSeries}/` : ""
           setHasMiniGtImage(!!imagePathPrefix && collectionRemark.includes(imagePathPrefix))
         }
@@ -374,7 +375,7 @@ export function EditPurchaseModal({
   const itemNoValue = form.watch("itemNo")
   const miniGtSeries = useMemo(() => {
     const normalizedItemNo = (itemNoValue || "").trim().toUpperCase()
-    return normalizedItemNo.match(/MGT\d{5}/)?.[0] || ""
+    return extractMiniGtSeries(normalizedItemNo) || ""
   }, [itemNoValue])
 
   const quantity = parseInt(form.watch("quantity")) || 0

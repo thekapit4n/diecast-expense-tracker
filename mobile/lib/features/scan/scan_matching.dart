@@ -80,7 +80,7 @@ int _editDistance(String a, String b) {
 String? extractItemNumber(String text) {
   final upper = text.toUpperCase();
 
-  final mgt = RegExp(r'MGT\s?\d{3,5}').firstMatch(upper);
+  final mgt = RegExp(r'MGT\s?[A-Z]?\d{3,5}').firstMatch(upper);
   if (mgt != null) return mgt.group(0)!.replaceAll(RegExp(r'\s'), '');
 
   final in64 = RegExp(r'IN64-[A-Z0-9-]{2,}').firstMatch(upper);

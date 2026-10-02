@@ -23,7 +23,7 @@ String? _sanitizeFolderKey(String itemNo, String brandName) {
 
   final isMiniGt = brandName.trim().toLowerCase().contains('mini gt');
   if (isMiniGt) {
-    return RegExp(r'MGT\d{5}').firstMatch(normalized)?.group(0);
+    return RegExp(r'MGT[A-Z0-9]\d{4}').firstMatch(normalized)?.group(0);
   }
 
   final cleaned = normalized
